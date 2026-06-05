@@ -2254,7 +2254,10 @@ function renderMarket(){
 }
 function copyTrip(id){
   let src=MARKET_DATA.find(m=>m.id===id)||trips.find(t=>t.id===id);if(!src){toast('일정을 불러올 수 없어요');return;}
-  const newT={id:'copy_'+Date.now(),name:(src.name||'복사한 여행')+' (내 편집본)',dest:src.dest||'',companion:src.companion||'',start:'',end:'',toppings:src.toppings||[],isPublic:false,copiedCount:0,flights:[],hotels:[],originalAuthor:(src.author||src.originalAuthor||null),days:(src.days||[]).map(d=>({title:d.title,items:(d.items||[{time:'오전 10시',name:d.title||'일정',desc:'편집해보세요'}]).map(item=>({time:item.time||'',name:item.name||'',desc:item.desc||''}))}))};
+  const newT={id:'copy_'+Date.now(),name:(src.name||'복사한 여행')+' (내 편집본)',dest:src.dest||'',companion:src.companion||'',start:'',end:'',toppings:src.toppings||[],isPublic:false,copiedCount:0,flights:[],hotels:[],originalAuthor:(src.author||src.originalAuthor||null),days:(src.days||[]).map(d=>{
+    var its=(d.items&&d.items.length)?d.items:(typeof genFeedItems==='function'?genFeedItems(d.title||'',src.dest||''):[{time:'오전 10시',name:d.title||'일정',desc:'편집해보세요'}]);
+    return{title:d.title,items:its.map(item=>({time:item.time||'',name:item.name||'',desc:item.desc||''}))};
+  })};
   const orig=MARKET_DATA.find(m=>m.id===id);if(orig)orig.copiedCount=(orig.copiedCount||0)+1;
   const origU=trips.find(t=>t.id===id);if(origU){origU.copiedCount=(origU.copiedCount||0)+1;}
   trips.unshift(newT);saveTD();toast('🎉 "'+src.name+'" 내 여행으로 복사됐어요!');setTimeout(()=>openTrip(newT.id),600);
