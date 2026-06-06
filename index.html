@@ -2231,7 +2231,7 @@ function toggleMarketLike(id,e){
   toast(marketLikes[id]?'♥ 좋아요!':'좋아요 취소');
 }
 function renderMarket(){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:t.originalAuthor||null,days:(t.days||[]).map(d=>({title:d.title}))}));
+  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:t.originalAuthor||null,isMine:true,days:(t.days||[]).map(d=>({title:d.title}))}));
   const all=[...MARKET_DATA,...publicTrips];
   const filtered=mfFilter==='전체'?all:all.filter(t=>t.dest&&t.dest.includes(mfFilter));
   document.getElementById('marketList').innerHTML=filtered.length?filtered.map(t=>{
@@ -2244,7 +2244,7 @@ function renderMarket(){
       <div class="mc-tops">${(t.toppings||[]).map(tp=>`<span class="mc-top-badge">🍕 ${tp}</span>`).join('')}</div>
       <div class="mc-days">${(t.days||[]).slice(0,4).map((d,i)=>`<div class="mc-day"><div class="mc-day-num">Day ${i+1}</div>${d.title}</div>`).join('')}${t.days&&t.days.length>4?`<div class="mc-day" style="color:var(--gy);">+${t.days.length-4}일</div>`:''}</div>
       <div class="mc-actions" onclick="event.stopPropagation()">
-        <button class="mc-copy-btn" onclick="copyTrip('${t.id}')"><i class="ti ti-copy"></i> 내 여행으로 복사</button>
+        ${t.isMine?'<button class="mc-copy-btn" style="background:#F0EEE9;color:var(--gy);cursor:default;" disabled><i class="ti ti-check"></i> 내 일정</button>':`<button class="mc-copy-btn" onclick="copyTrip('${t.id}')"><i class="ti ti-copy"></i> 내 여행으로 복사</button>`}
         <button class="mc-like-btn${liked?' on':''}" onclick="toggleMarketLike('${t.id}',event)">
           <i class="ti ti-heart"></i><span class="mc-like-cnt">${likeCount}</span>
         </button>
@@ -2578,7 +2578,7 @@ function genFeedItems(dayTitle,dest){
 }
 
 function openFeedDetail(id){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,likes:0,days:(t.days||[])}));
+  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,likes:0,isMine:true,days:(t.days||[])}));
   const all=[...MARKET_DATA,...publicTrips];
   const t=all.find(x=>x.id===id);
   if(!t)return;
@@ -2600,6 +2600,12 @@ function openFeedDetail(id){
   // 좋아요 상태
   updateFeedLikeUI();
   renderFeedComments();
+  // 내 여행이면 복사 버튼 비활성화
+  var copyBtn=document.querySelector('.fda-copy');
+  if(copyBtn){
+    if(t.isMine){copyBtn.innerHTML='<i class="ti ti-check"></i> 내 일정이에요';copyBtn.style.background='#F0EEE9';copyBtn.style.color='var(--gy)';copyBtn.style.boxShadow='none';copyBtn.disabled=true;}
+    else{copyBtn.innerHTML='<i class="ti ti-copy"></i> 내 여행으로 복사하기';copyBtn.style.background='';copyBtn.style.color='';copyBtn.style.boxShadow='';copyBtn.disabled=false;}
+  }
   showScr('s-feed-detail');setNav('nb-comm');
 }
 
