@@ -1246,6 +1246,14 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
   </div>
   <div class="stats-title"><i class="ti ti-chart-bar"></i> 나의 여행 기록</div>
   <div class="stats-row" id="statsRow"></div>
+  <!-- 내 여행 지도 -->
+  <div class="stats-title" style="margin-top:6px;"><i class="ti ti-map-pin"></i> 내가 다녀온 곳 <span id="conquerBadge" style="font-size:11px;color:var(--or);font-weight:700;margin-left:4px;"></span></div>
+  <div id="myMapWrap" style="padding:0 16px 16px;">
+    <div id="myTravelMap" style="width:100%;height:200px;border-radius:var(--radius-md);overflow:hidden;border:1.5px solid var(--bd);box-shadow:var(--shadow-sm);"></div>
+    <div id="myMapEmpty" style="display:none;text-align:center;padding:36px 20px;background:#F5F3EF;border-radius:var(--radius-md);color:var(--gy);font-size:12px;">
+      🗺<br><br>아직 저장한 여행이 없어요<br>첫 여행을 만들면 지도에 핀이 꽂혀요!
+    </div>
+  </div>
   <div class="my-grid">
     <div class="my-grid-card" onclick="goMyTrips()">
       <div class="mgc-em">🧳</div><div class="mgc-ttl">내 여행 보관함</div>
@@ -1847,7 +1855,7 @@ function goSearch(){
 }
 function goSwipe(){if(!query){toast('먼저 여행을 입력해주세요');return;}showScr('s-swipe');setNav('nb-search');}
 function goPlanNav(){if(!currentPlan){toast('먼저 플랜을 생성해주세요');return;}showScr('s-plan');setNav('nb-my');setTimeout(()=>{if(map)map.invalidateSize();},100);}
-function goMy(){showScr('s-my');setNav('nb-my');setMenuActive('mi-my');document.getElementById('myTripsCnt').textContent=trips.length+'개 여행';document.getElementById('myPlanCnt').textContent=currentPlan?'플랜 보기':'플랜 없음';renderStats();}
+function goMy(){showScr('s-my');setNav('nb-my');setMenuActive('mi-my');document.getElementById('myTripsCnt').textContent=trips.length+'개 여행';document.getElementById('myPlanCnt').textContent=currentPlan?'플랜 보기':'플랜 없음';renderStats();renderMyTravelMap();}
 function goMyTrips(){showScr('s-mytrips');setNav('nb-my');setMenuActive('msi-trips');renderTripList();}
 function goNewTrip(){['newName','newDest','newCompanion'].forEach(id=>document.getElementById(id).value='');['newStart','newEnd'].forEach(id=>document.getElementById(id).value='');document.getElementById('createBtn').disabled=true;showScr('s-newtrip');setNav('nb-my');}
 function goBudget(){showScr('s-budget');setNav('nb-my');setMenuActive('msi-budget');renderCatSliders();calcBudget();}
@@ -3027,6 +3035,81 @@ function dismissInstall(){
 })();
 
 
+
+
+/* ══ MY TRAVEL MAP ══ */
+var _myMap=null, _myMapMarkers=[];
+
+function isOverseasCity(dest){
+  if(!dest)return false;
+  return !(dest.includes('제주')||dest.includes('서울')||dest.includes('부산')||dest.includes('강릉')||dest.includes('경주')||dest.includes('대한민국')||dest.includes('한국')||dest.includes('속초')||dest.includes('여수')||dest.includes('전주')||dest.includes('대구')||dest.includes('인천')||dest.includes('광주')||dest.includes('대전')||dest.includes('울산')||dest.includes('춘천')||dest.includes('포항')||dest.includes('통영'));
+}
+
+function renderMyTravelMap(){
+  const wrap=document.getElementById('myMapWrap');
+  const mapEl=document.getElementById('myTravelMap');
+  const emptyEl=document.getElementById('myMapEmpty');
+  if(!mapEl)return;
+  // 좌표 있는 여행만
+  const located=[];
+  trips.forEach(t=>{
+    // 여행의 첫 좌표 찾기
+    let lat=null,lng=null;
+    if(t.days){
+      for(const d of t.days){
+        if(d.items){for(const it of d.items){if(it.lat&&it.lng){lat=it.lat;lng=it.lng;break;}}}
+        if(lat)break;
+      }
+    }
+    if(lat&&lng){located.push({name:t.name,dest:t.dest,lat,lng,id:t.id});}
+  });
+
+  if(!located.length){
+    mapEl.style.display='none';
+    if(emptyEl)emptyEl.style.display='block';
+    document.getElementById('conquerBadge').textContent='';
+    return;
+  }
+  mapEl.style.display='block';
+  if(emptyEl)emptyEl.style.display='none';
+
+  // 정복 뱃지: 국가/도시 수
+  const cities=new Set(),overseas=new Set();
+  located.forEach(l=>{
+    const city=(l.dest||'').split(',')[0].trim();
+    if(city)cities.add(city);
+    if(isOverseasCity(l.dest)){const country=(l.dest||'').split(',')[1]||'';if(country)overseas.add(country.trim());}
+  });
+  document.getElementById('conquerBadge').textContent=`🏆 ${cities.size}개 도시`;
+
+  // 지도 초기화
+  setTimeout(()=>{
+    if(!_myMap){
+      _myMap=L.map('myTravelMap',{zoomControl:true,attributionControl:false}).setView([located[0].lat,located[0].lng],5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(_myMap);
+    }
+    // 기존 마커 제거
+    _myMapMarkers.forEach(m=>_myMap.removeLayer(m));
+    _myMapMarkers=[];
+    // 핀 추가
+    const bounds=[];
+    located.forEach(l=>{
+      const overseas=isOverseasCity(l.dest);
+      const color=overseas?'#FF5F1F':'#00C9A7';
+      const icon=L.divIcon({className:'',html:`<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:12px;">${overseas?'✈️':'🏠'}</span></div>`,iconSize:[26,26],iconAnchor:[13,26]});
+      const marker=L.marker([l.lat,l.lng],{icon}).addTo(_myMap);
+      const cityName=(l.dest||'').split(',')[0].trim();
+      marker.bindPopup(`<b>${cityName}</b><br>${l.name}`);
+      marker.on('click',()=>{viewTrip(l.id);});
+      _myMapMarkers.push(marker);
+      bounds.push([l.lat,l.lng]);
+    });
+    // 모든 핀이 보이게
+    if(bounds.length>1){_myMap.fitBounds(bounds,{padding:[30,30],maxZoom:8});}
+    else if(bounds.length===1){_myMap.setView(bounds[0],8);}
+    _myMap.invalidateSize();
+  },100);
+}
 
 </script>
 
