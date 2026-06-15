@@ -967,6 +967,15 @@ html{scroll-behavior:smooth;}
 
 select.si-time{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px!important;cursor:pointer;}
 
+
+.si-ctrl{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);}
+.si-ctrl-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;padding:7px 4px;border:1.5px solid var(--bd);border-radius:8px;background:var(--wh);font-size:11px;font-family:'Gowun Dodum',sans-serif;color:var(--gy);cursor:pointer;transition:all .15s;}
+.si-ctrl-btn:hover:not(:disabled){border-color:var(--or);color:var(--or);}
+.si-ctrl-btn:active:not(:disabled){transform:scale(.95);}
+.si-ctrl-btn:disabled{opacity:.35;cursor:default;}
+.si-ctrl-btn.del:hover{border-color:#E74C3C;color:#E74C3C;}
+.si-ctrl-btn i{font-size:13px;}
+
 </style>
 </head>
 <body>
@@ -2188,6 +2197,9 @@ function getPlan(q){const l=q.toLowerCase();
   return PLANS['나트랑'];
 }
 function renderPlan(plan,isSaved){currentPlan=plan;document.getElementById('planTtl').textContent='🍕 '+plan.title;
+  // 당일치기 표시 보정
+  if(plan.duration){plan.duration=plan.duration.replace(/0박\s*1일/,'당일 일정');}
+  if((!plan.duration||plan.duration==='')&&plan.days&&plan.days.length===1){plan.duration='당일 일정';}
   // 저장된 플랜이면 저장버튼 숨기고, 새 플랜이면 표시
   var saveBtn=document.querySelector('#planBtns button[onclick*="savePlanToTrips"]');
   if(saveBtn)saveBtn.style.display=isSaved?'none':'';
@@ -2234,7 +2246,7 @@ function renderTripList(){
   wrap.innerHTML=trips.map(t=>`<div class="trip-card${t.isPublic?' pub':''}" onclick="viewTrip('${t.id}')" style="cursor:pointer;">
     ${getDdayBadge(t.start)}
     <div class="trip-name">✈️ ${t.name}${t.isPublic?'<span class="pub-badge">공개중</span>':''}</div>
-    <div class="trip-info"><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest} · <i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)} · ${t.companion||''}</div>
+    <div class="trip-info"><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest} · <i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)===fmtDate(t.end)?fmtDate(t.start)+' · 당일':fmtDate(t.start)+' ~ '+fmtDate(t.end)} · ${t.companion||''}</div>
     <div class="trip-tops">${(t.toppings||[]).map(tp=>`<span class="trip-tb">🍕 ${tp}</span>`).join('')}</div>
     ${t.isPublic?`<div class="trip-copy-cnt"><i class="ti ti-copy"></i> ${t.copiedCount||0}명이 복사했어요</div>`:''}
     <div class="trip-acts" onclick="event.stopPropagation()">
@@ -2274,7 +2286,7 @@ function addDay(){const t=getTrip();if(!t)return;t.days.push({title:`Day ${t.day
   if(mr&&t.dest){mr.innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-moon" style="font-size:11px;"></i> ${fmtDuration(t.start,t.end)}</span>`;}
   toast('📅 Day 추가 · 날짜 조정됨');
 }
-function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}" draggable="true" ondragstart="dStart(${i})" ondragover="dOver(event,${i})" ondrop="dDrop(event,${i})" ondragend="dEnd()"><div class="si-top"><i class="ti ti-grip-vertical si-drag"></i><div class="si-dot sd${i%3}"></div><select class="si-time" onchange="updItem(${i},'time',this.value)">${buildTimeOptions(item.time||'')}</select><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/><div class="si-move"><button class="si-mv-btn" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}><i class="ti ti-chevron-up"></i></button><button class="si-mv-btn" onclick="moveItem(${i},1)" ${i===(day.items||[]).length-1?'disabled':''}><i class="ti ti-chevron-down"></i></button></div><button class="si-del-btn" onclick="delItem(${i})"><i class="ti ti-x"></i></button></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
+function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}"><div class="si-top"><div class="si-dot sd${i%3}"></div><select class="si-time" onchange="updItem(${i},'time',this.value)">${buildTimeOptions(item.time||'')}</select><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea><div class="si-ctrl"><button class="si-ctrl-btn" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}><i class="ti ti-chevron-up"></i> 위로</button><button class="si-ctrl-btn" onclick="moveItem(${i},1)" ${i===(day.items||[]).length-1?'disabled':''}><i class="ti ti-chevron-down"></i> 아래로</button><button class="si-ctrl-btn del" onclick="delItem(${i})"><i class="ti ti-trash"></i> 삭제</button></div></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
 function updDayTtl(v){const t=getTrip();if(t&&t.days[currentDayIdx]){t.days[currentDayIdx].title=v;saveTD();renderDayTabs();}}
 function updItem(i,k,v){const t=getTrip();if(t&&t.days[currentDayIdx]&&t.days[currentDayIdx].items[i]){t.days[currentDayIdx].items[i][k]=v;saveTD();}}
 function addItem(){const t=getTrip();if(!t)return;t.days[currentDayIdx].items.push({time:'',name:'',desc:''});saveTD();renderDayEdit();toast('📍 일정 추가!');}
@@ -2293,10 +2305,10 @@ function delDay(i){const t=getTrip();if(!t||t.days.length<=1){toast('최소 1일
   if(mr&&t.dest){mr.innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-moon" style="font-size:11px;"></i> ${fmtDuration(t.start,t.end)}</span>`;}
   toast('Day 삭제됨 · 날짜 조정됨');
 }
-function dStart(i){dragSrcIdx=i;setTimeout(()=>{const el=document.getElementById('si-'+i);if(el)el.style.opacity='.4';},0);}
-function dOver(e,i){e.preventDefault();document.querySelectorAll('.sched-item').forEach(el=>el.classList.remove('drag-ov'));const el=document.getElementById('si-'+i);if(el)el.classList.add('drag-ov');}
-function dDrop(e,i){e.preventDefault();if(dragSrcIdx===null||dragSrcIdx===i)return;const t=getTrip();if(!t)return;const items=t.days[currentDayIdx].items;const moved=items.splice(dragSrcIdx,1)[0];items.splice(i,0,moved);saveTD();renderDayEdit();toast('순서 변경!');}
-function dEnd(){dragSrcIdx=null;document.querySelectorAll('.sched-item').forEach(el=>{el.classList.remove('drag-ov');el.style.opacity='1';});}
+
+
+
+
 
 /* ══ BUDGET ══ */
 const STYLE_DEF={budget:{food:3,activity:2,transport:1,shopping:1,misc:1},standard:{food:6,activity:5,transport:3,shopping:3,misc:2},luxury:{food:15,activity:15,transport:8,shopping:10,misc:5}};
@@ -2850,20 +2862,8 @@ function submitFeedComment(){
 function openApiKeyModal(){
   document.getElementById('apiKeyOverlay').style.display='flex';
 }
-function saveApiKey(){
-  const inp=document.getElementById('apiKeyInput');
-  const k=inp.value.trim();
-  if(!k){toast('키를 입력해주세요');return;}
-  if(!k.startsWith('sk-ant-')){toast('올바른 Anthropic 키 형식이 아니에요');return;}
-  setApiKey(k);
-  document.getElementById('apiKeyOverlay').style.display='none';
-  toast('🤖 AI 플랜 생성이 활성화됐어요!');
-}
-function clearApiKeyModal(){
-  setApiKey('');
-  document.getElementById('apiKeyOverlay').style.display='none';
-  toast('키가 삭제됐어요');
-}
+
+
 
 
 /* ══ SEARCH POPULAR TOPPINGS ══ */
