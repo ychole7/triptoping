@@ -1303,7 +1303,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <input class="f-inp" id="newDest" type="text" placeholder="예: 나트랑, 베트남" oninput="checkNewForm()"/>
     <div class="f-label"><i class="ti ti-calendar"></i> 여행 기간</div>
     <div class="f-row">
-      <input class="f-inp" id="newStart" type="date" oninput="checkNewForm()" style="flex:1;"/>
+      <input class="f-inp" id="newStart" type="date" oninput="syncEndMin();checkNewForm()" style="flex:1;"/>
       <input class="f-inp" id="newEnd" type="date" oninput="checkNewForm()" style="flex:1;"/>
     </div>
     <div class="f-label"><i class="ti ti-users"></i> 동행</div>
@@ -2294,7 +2294,19 @@ function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;sa
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
 function delTrip(id){if(!confirm('정말 삭제할까요?'))return;trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
 function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim()&&document.getElementById('newStart').value&&document.getElementById('newEnd').value;document.getElementById('createBtn').disabled=!ok;}
-function createTrip(){const name=document.getElementById('newName').value.trim(),dest=document.getElementById('newDest').value.trim(),start=document.getElementById('newStart').value,end=document.getElementById('newEnd').value,companion=document.getElementById('newCompanion').value.trim();const n=getDays(start,end);const nt={id:'t'+Date.now(),name,dest,start,end,companion,toppings:[],isPublic:false,copiedCount:0,flights:[],hotels:[],days:Array.from({length:n},(_,i)=>({title:`Day ${i+1}`,items:[{time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'}]}))};trips.unshift(nt);saveTD();toast('🍕 여행이 만들어졌어요!');openTrip(nt.id);}
+function createTrip(){const name=document.getElementById('newName').value.trim(),dest=document.getElementById('newDest').value.trim();var start=document.getElementById('newStart').value,end=document.getElementById('newEnd').value;const companion=document.getElementById('newCompanion').value.trim();
+  // 날짜 검증: 귀국일이 출발일보다 빠르면 교환
+  if(start&&end&&new Date(end)<new Date(start)){var _tmp=start;start=end;end=_tmp;}
+  // 한쪽만 있으면 같은 날로 (당일치기)
+  if(start&&!end)end=start;
+  if(end&&!start)start=end;
+  var n=getDays(start,end);if(n<1)n=1;
+  // 목적지 좌표 미리 찾아서 첫 항목에 박기 (지도 핀용)
+  var cc=(typeof findCityCoords==='function')?findCityCoords(dest):null;
+  var firstItem={time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'};
+  if(cc){firstItem.lat=cc[0];firstItem.lng=cc[1];}
+  const nt={id:'t'+Date.now(),name,dest,start,end,companion,toppings:[],isPublic:false,copiedCount:0,flights:[],hotels:[],days:Array.from({length:n},(_,i)=>({title:`Day ${i+1}`,items:[i===0?firstItem:{time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'}]}))};
+  trips.unshift(nt);saveTD();toast('🍕 여행이 만들어졌어요!');openTrip(nt.id);}
 function toggleSec(s){document.getElementById(s+'-body').classList.toggle('open');document.getElementById(s+'-toggle').classList.toggle('open');}
 function renderFlights(){const t=getTrip();document.getElementById('flightList').innerHTML=(t&&t.flights||[]).map((f,i)=>`<div class="saved-i"><div class="saved-i-top"><div class="saved-i-label"><i class="ti ti-plane"></i> ${f.airline} ${f.num}</div><button class="saved-i-del" onclick="delFlight(${i})"><i class="ti ti-x"></i></button></div><div class="saved-i-grid"><div><div class="si-r">출발</div><div class="si-v">${f.from}</div></div><div><div class="si-r">도착</div><div class="si-v">${f.to}</div></div><div><div class="si-r">날짜</div><div class="si-v">${fmtDate(f.date)}</div></div><div><div class="si-r">시간</div><div class="si-v">${f.time}</div></div></div></div>`).join('');}
 function showFlightForm(){document.getElementById('flightForm').style.display='block';document.getElementById('addFlightBtn').style.display='none';}
@@ -3149,6 +3161,17 @@ function renderMyTravelMap(){
     else if(bounds.length===1){_myMap.setView(bounds[0],8);}
     _myMap.invalidateSize();
   },100);
+}
+
+
+function syncEndMin(){
+  var s=document.getElementById('newStart').value;
+  var endEl=document.getElementById('newEnd');
+  if(s){
+    endEl.min=s;
+    // 귀국일이 비었거나 출발일보다 빠르면 출발일로 맞춤
+    if(!endEl.value||new Date(endEl.value)<new Date(s)){endEl.value=s;}
+  }
 }
 
 </script>
