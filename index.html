@@ -1890,6 +1890,7 @@ function renderSelBar(){
   const el=document.getElementById('selBar');
   el.innerHTML=myTops.length?myTops.map(t=>`<div class="s-pill" onclick="removeSel('${getTopKey(t)}')">${t.emoji} ${t.title||t.name} <i class="ti ti-x"></i></div>`).join(''):'<span class="sel-empty">토핑을 골라 여행에 추가하세요 🍕</span>';
   updateMainGen();renderMainComm();renderAiCards(aiGenTops);
+  if(typeof renderPopTops==='function'){var _sp=document.getElementById('searchPopTops');if(_sp&&_sp.style.display!=='none')renderPopTops();}
 }
 function removeSel(key){removeTK(key);renderSelBar();renderTbar();updateSwGen();}
 function updateMainGen(){const q=document.getElementById('sinput').value.trim(),btn=document.getElementById('mainGenBtn'),lb=document.getElementById('mainGenLbl');btn.disabled=!q;lb.textContent=q?(myTops.length?`토핑 ${myTops.length}개로 플랜 생성 🍕`:'토핑 없이 플랜 생성'):'여행 입력 후 플랜 생성하기';}
@@ -2525,7 +2526,13 @@ function updateDateNights(){
   if(!s||!e){el.textContent='';return;}
   const days=Math.round((new Date(e)-new Date(s))/864e5);
   if(days<0){el.textContent='귀국일이 출발일보다 빠릅니다';return;}
-  el.textContent=days+'박 '+(days+1)+'일';
+  const totalDays=days+1;
+  const planDayCount=(currentPlan&&currentPlan.days)?currentPlan.days.length:1;
+  let txt=days+'박 '+totalDays+'일';
+  if(totalDays>planDayCount){
+    txt+=` · 빈 Day ${totalDays-planDayCount}개 자동 추가`;
+  }
+  el.textContent=txt;
 }
 
 function _doSavePlan(start,end){
@@ -2539,10 +2546,7 @@ function _doSavePlan(start,end){
     companion:currentPlan.companion,
     toppings:myTops.map(t=>t.title||t.name),
     isPublic:false,copiedCount:0,flights:[],hotels:[],
-    days:currentPlan.days.map(d=>({
-      title:d.title,
-      items:d.items.map(item=>({time:item.time,name:item.name,desc:item.desc,lat:item.lat||null,lng:item.lng||null}))
-    }))
+    days:adjustDaysToTrip(currentPlan.days,start,end)
   };
   trips.unshift(nt);saveTD();
   _savedTripId=nt.id;
@@ -2550,6 +2554,9 @@ function _doSavePlan(start,end){
   const sub=document.getElementById('saveBannerSub');
   if(sub)sub.textContent='"'+nt.name+'"이 보관함에 저장됐어요';
   if(banner)banner.style.display='block';
+  // 저장 버튼 숨기기 (중복 저장 방지)
+  var saveBtn=document.querySelector('#planBtns button[onclick*="savePlanToTrips"]');
+  if(saveBtn)saveBtn.style.display='none';
   toast('💾 저장됐어요!');
 }
 
@@ -2873,6 +2880,33 @@ function moveItem(idx,dir){
   const tmp=items[idx];items[idx]=items[ni];items[ni]=tmp;
   saveTD();
   renderDayEdit();
+}
+
+
+// 여행 일수에 맞춰 Day 자동 조정 (모자라면 빈 Day 추가, 남으면 유지)
+function adjustDaysToTrip(planDays, start, end){
+  // 원본 일정 복사
+  var days=(planDays||[]).map(function(d){
+    return{
+      title:d.title,
+      items:(d.items||[]).map(function(item){
+        return{time:item.time,name:item.name,desc:item.desc,lat:item.lat||null,lng:item.lng||null};
+      })
+    };
+  });
+  // 여행 일수 계산
+  if(start && end){
+    var totalDays=Math.round((new Date(end)-new Date(start))/864e5)+1;
+    if(totalDays>0){
+      // 모자라면 빈 Day 추가
+      while(days.length<totalDays){
+        var n=days.length+1;
+        days.push({title:'Day '+n+' 일정',items:[{time:'오전',name:'일정을 추가해보세요',desc:'이 날의 일정을 직접 채워보세요',lat:null,lng:null}]});
+      }
+      // 너무 많으면 자르지 않음 (사용자 일정 보존) — 그냥 둠
+    }
+  }
+  return days;
 }
 
 </script>
