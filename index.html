@@ -1968,6 +1968,10 @@ function renderAiSwipeCards(list){
 function drawCurrentCard(){
   const stage=document.getElementById('aiCardStage');
   stage.querySelectorAll('.ai-swipe-card,.ai-ghost-card').forEach(c=>c.remove());
+  // 이미 추가된 토핑은 건너뛰기
+  while(aiCardIdx<aiGenTops.length && hasTop({key:aiGenTops[aiCardIdx].key})){
+    aiCardIdx++;
+  }
   if(aiCardIdx>=aiGenTops.length){showAiDone();return;}
   const remain=aiGenTops.length-aiCardIdx;
   if(remain>2){
@@ -2840,6 +2844,10 @@ function renderPopTops(){
 function togglePopTop(id){
   toggleCM(id);       // 기존 추가/제거 로직 재사용
   renderPopTops();    // 칩 상태 갱신
+  // AI 카드도 현재 카드가 추가됐으면 다음으로
+  if(aiGenTops.length && document.getElementById('aiCardStageWrap').style.display!=='none'){
+    drawCurrentCard();
+  }
 }
 
 </script>
