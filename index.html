@@ -1891,8 +1891,12 @@ function toggleCM(id){const t=commTops.find(x=>x.id===id);if(!t)return;const top
 /* ══ AI TOPPINGS (SWIPE CARDS) ══ */
 let aiCardIdx=0, aiCardDragging=false, aiCardSx=0, aiCardSy=0, aiCardCx=0, aiCardCy=0, aiCurCard=null;
 
+var _lastAiQuery='';
 function triggerAiTops(q){
+  // 같은 검색어면 카드 상태 유지 (재생성 안 함)
+  if(q===_lastAiQuery && aiGenTops.length){return;}
   clearTimeout(aiDebounceTimer);
+  _lastAiQuery=q;
   aiCardIdx=0;
   if(aiCache[q]){document.getElementById('aiTopLbl').textContent=' AI 추천 토핑';renderAiSwipeCards(aiCache[q]);return;}
   document.getElementById('aiLoading').style.display='flex';
@@ -1902,8 +1906,8 @@ function triggerAiTops(q){
 }
 async function fetchAiTops(q){
   try{
-    const sys='여행 검색어 분석 후 구체적 장소/액티비티 토핑 5~6개 추천. 카테고리 말고 실제 장소명으로. 순수 JSON만: {"toppings":[{"emoji":"🎡","name":"빈펄랜드","desc":"케이블카+워터파크"}]}';
-    const raw=await callClaude(sys, `여행: "${q}"`, 500);
+    const sys='여행 검색어 분석 후 구체적 장소/액티비티 토핑 10개 추천. 카테고리 말고 실제 장소명으로. 다양하게(명소,맛집,액티비티,힐링,쇼핑 골고루). 순수 JSON만: {"toppings":[{"emoji":"🎡","name":"빈펄랜드","desc":"케이블카+워터파크"}]}';
+    const raw=await callClaude(sys, `여행: "${q}"`, 900);
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     if(parsed&&parsed.toppings){const tops=parsed.toppings.map((t,i)=>({...t,id:'ai_'+i,key:'ai_'+t.name,isAI:true}));aiCache[q]=tops;aiGenTops=tops;renderAiSwipeCards(tops);document.getElementById('aiTopLbl').textContent=' AI 맞춤 토핑';}
     else fallbackAi(q);
@@ -1913,7 +1917,7 @@ async function fetchAiTops(q){
 function fallbackAi(q){
   const sc={};TOPPINGS.forEach(t=>sc[t.key]=0);
   Object.entries(KW).forEach(([k,vs])=>{if(q.toLowerCase().includes(k))vs.forEach(v=>{if(v in sc)sc[v]+=2;});});
-  const tops=[...TOPPINGS].sort((a,b)=>sc[b.key]-sc[a.key]).slice(0,5).map(t=>({id:'fb_'+t.key,key:'fb_'+t.key,emoji:t.emoji,name:t.title,desc:t.desc,isAI:false}));
+  const tops=[...TOPPINGS].sort((a,b)=>sc[b.key]-sc[a.key]).slice(0,10).map(t=>({id:'fb_'+t.key,key:'fb_'+t.key,emoji:t.emoji,name:t.title,desc:t.desc,isAI:false}));
   aiGenTops=tops;renderAiSwipeCards(tops);
   document.getElementById('aiTopLbl').textContent=' 추천 토핑';
   document.getElementById('aiLoading').style.display='none';
@@ -2029,9 +2033,13 @@ function nextAiCard(){
   const stage=document.getElementById('aiCardStage');
   stage.querySelectorAll('.ai-swipe-card').forEach(c=>c.remove());
   if(aiCardIdx>=aiGenTops.length){showAiDone();return;}
+  // 부채꼴 배치 (renderAiSwipeCards와 동일)
+  const fanRot=[0,7,-7];
+  const fanX=[0,26,-26];
+  const fanScale=[1,0.94,0.88];
   for(let i=Math.min(aiCardIdx+2,aiGenTops.length-1);i>=aiCardIdx;i--){
     const off=i-aiCardIdx;
-    stage.appendChild(buildAiCard(aiGenTops[i],10+(8-off*3),1-off*0.06,off*6));
+    stage.appendChild(buildAiCard(aiGenTops[i],30-off,fanScale[off]||0.85,fanX[off]||0,fanRot[off]||0,aiCardIdx+off));
   }
   aiCurCard=stage.querySelector('.ai-swipe-card:last-child');
   attachAiDrag(aiCurCard);
@@ -2804,7 +2812,10 @@ function renderPopTops(){
       <span class="ptt-chip-name">${t.name}</span>
       <i class="ti ti-check ptt-chip-check"></i>
     </div>`;
-  }).join('');
+  }).join('')+`<div class="ptt-chip ptt-more" onclick="goCommToppings()" style="border-style:dashed;border-color:var(--or);color:var(--or);">
+    <span class="ptt-chip-name" style="color:var(--or);">전체보기</span>
+    <i class="ti ti-arrow-right" style="font-size:13px;color:var(--or);"></i>
+  </div>`;
 }
 function togglePopTop(id){
   toggleCM(id);       // 기존 추가/제거 로직 재사용
