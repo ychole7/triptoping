@@ -964,6 +964,9 @@ html{scroll-behavior:smooth;}
 .si-mv-btn:disabled{opacity:.3;cursor:default;}
 .si-mv-btn i{font-size:13px;}
 
+
+select.si-time{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px!important;cursor:pointer;}
+
 </style>
 </head>
 <body>
@@ -1388,11 +1391,11 @@ html{scroll-behavior:smooth;}
   </div>
   <div class="bgt-sec">
     <div class="bgt-sec-ttl"><i class="ti ti-plane"></i> 항공비 <span class="bgt-hint">1인 왕복 (만원)</span></div>
-    <div class="bgt-inp-wrap"><input class="bgt-inp" id="flightCost" type="number" placeholder="50" oninput="calcBudget()"/><span class="bgt-unit">만원</span></div>
+    <div class="bgt-inp-wrap"><input class="bgt-inp" id="flightCost" type="number" min="0" placeholder="50" oninput="if(this.value<0)this.value=0;calcBudget()"/><span class="bgt-unit">만원</span></div>
   </div>
   <div class="bgt-sec">
     <div class="bgt-sec-ttl"><i class="ti ti-bed"></i> 숙박비 <span class="bgt-hint">1박 전체 (만원)</span></div>
-    <div class="bgt-inp-wrap"><input class="bgt-inp" id="hotelCost" type="number" placeholder="15" oninput="calcBudget()"/><span class="bgt-unit">만원</span></div>
+    <div class="bgt-inp-wrap"><input class="bgt-inp" id="hotelCost" type="number" min="0" placeholder="15" oninput="if(this.value<0)this.value=0;calcBudget()"/><span class="bgt-unit">만원</span></div>
   </div>
   <div class="bgt-sec">
     <div class="bgt-sec-ttl"><i class="ti ti-sliders"></i> 하루 예산 <span class="bgt-hint">인당 만원</span></div>
@@ -2263,13 +2266,33 @@ function saveHotel(){const t=getTrip();if(!t)return;const h={name:document.getEl
 function delHotel(i){const t=getTrip();if(!t)return;t.hotels.splice(i,1);saveTD();renderHotels();}
 function renderDayTabs(){const t=getTrip();if(!t)return;document.getElementById('dayTabRow').innerHTML=(t.days||[]).map((d,i)=>`<div class="d-tab${i===currentDayIdx?' on':''}" onclick="switchDay(${i})">Day ${i+1}</div>`).join('')+`<div class="add-d-tab" onclick="addDay()"><i class="ti ti-plus"></i> 추가</div>`;}
 function switchDay(i){currentDayIdx=i;renderDayTabs();renderDayEdit();}
-function addDay(){const t=getTrip();if(!t)return;t.days.push({title:`Day ${t.days.length+1}`,items:[]});currentDayIdx=t.days.length-1;saveTD();renderDayTabs();renderDayEdit();toast('📅 Day 추가!');}
-function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}" draggable="true" ondragstart="dStart(${i})" ondragover="dOver(event,${i})" ondrop="dDrop(event,${i})" ondragend="dEnd()"><div class="si-top"><i class="ti ti-grip-vertical si-drag"></i><div class="si-dot sd${i%3}"></div><input class="si-time" value="${item.time||''}" onchange="updItem(${i},'time',this.value)" placeholder="시간"/><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/><div class="si-move"><button class="si-mv-btn" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}><i class="ti ti-chevron-up"></i></button><button class="si-mv-btn" onclick="moveItem(${i},1)" ${i===(day.items||[]).length-1?'disabled':''}><i class="ti ti-chevron-down"></i></button></div><button class="si-del-btn" onclick="delItem(${i})"><i class="ti ti-x"></i></button></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
+function addDay(){const t=getTrip();if(!t)return;t.days.push({title:`Day ${t.days.length+1}`,items:[]});currentDayIdx=t.days.length-1;
+  // 날짜 조정 (귀국일 +1)
+  if(t.start){var ne=new Date(t.start);ne.setDate(ne.getDate()+(t.days.length-1));t.end=ne.toISOString().split('T')[0];}
+  saveTD();renderDayTabs();renderDayEdit();
+  var mr=document.getElementById('detailMetaRow');
+  if(mr&&t.dest){mr.innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-moon" style="font-size:11px;"></i> ${fmtDuration(t.start,t.end)}</span>`;}
+  toast('📅 Day 추가 · 날짜 조정됨');
+}
+function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}" draggable="true" ondragstart="dStart(${i})" ondragover="dOver(event,${i})" ondrop="dDrop(event,${i})" ondragend="dEnd()"><div class="si-top"><i class="ti ti-grip-vertical si-drag"></i><div class="si-dot sd${i%3}"></div><select class="si-time" onchange="updItem(${i},'time',this.value)">${buildTimeOptions(item.time||'')}</select><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/><div class="si-move"><button class="si-mv-btn" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}><i class="ti ti-chevron-up"></i></button><button class="si-mv-btn" onclick="moveItem(${i},1)" ${i===(day.items||[]).length-1?'disabled':''}><i class="ti ti-chevron-down"></i></button></div><button class="si-del-btn" onclick="delItem(${i})"><i class="ti ti-x"></i></button></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
 function updDayTtl(v){const t=getTrip();if(t&&t.days[currentDayIdx]){t.days[currentDayIdx].title=v;saveTD();renderDayTabs();}}
 function updItem(i,k,v){const t=getTrip();if(t&&t.days[currentDayIdx]&&t.days[currentDayIdx].items[i]){t.days[currentDayIdx].items[i][k]=v;saveTD();}}
 function addItem(){const t=getTrip();if(!t)return;t.days[currentDayIdx].items.push({time:'',name:'',desc:''});saveTD();renderDayEdit();toast('📍 일정 추가!');}
 function delItem(i){const t=getTrip();if(!t)return;t.days[currentDayIdx].items.splice(i,1);saveTD();renderDayEdit();}
-function delDay(i){const t=getTrip();if(!t||t.days.length<=1){toast('최소 1일은 있어야 해요');return;}t.days.splice(i,1);currentDayIdx=Math.min(currentDayIdx,t.days.length-1);saveTD();renderDayTabs();renderDayEdit();toast('Day 삭제됨');}
+function delDay(i){const t=getTrip();if(!t||t.days.length<=1){toast('최소 1일은 있어야 해요');return;}t.days.splice(i,1);currentDayIdx=Math.min(currentDayIdx,t.days.length-1);
+  // 일정 수에 맞춰 귀국일 조정
+  if(t.start){
+    var newEnd=new Date(t.start);
+    newEnd.setDate(newEnd.getDate()+(t.days.length-1));
+    t.end=newEnd.toISOString().split('T')[0];
+  }
+  saveTD();renderDayTabs();renderDayEdit();
+  // 헤더 날짜 갱신
+  if(typeof renderDetailHeader==='function')renderDetailHeader();
+  var mr=document.getElementById('detailMetaRow');
+  if(mr&&t.dest){mr.innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-moon" style="font-size:11px;"></i> ${fmtDuration(t.start,t.end)}</span>`;}
+  toast('Day 삭제됨 · 날짜 조정됨');
+}
 function dStart(i){dragSrcIdx=i;setTimeout(()=>{const el=document.getElementById('si-'+i);if(el)el.style.opacity='.4';},0);}
 function dOver(e,i){e.preventDefault();document.querySelectorAll('.sched-item').forEach(el=>el.classList.remove('drag-ov'));const el=document.getElementById('si-'+i);if(el)el.classList.add('drag-ov');}
 function dDrop(e,i){e.preventDefault();if(dragSrcIdx===null||dragSrcIdx===i)return;const t=getTrip();if(!t)return;const items=t.days[currentDayIdx].items;const moved=items.splice(dragSrcIdx,1)[0];items.splice(i,0,moved);saveTD();renderDayEdit();toast('순서 변경!');}
@@ -2286,7 +2309,7 @@ function adjD(d){bgtDays=Math.max(1,Math.min(30,bgtDays+d));document.getElementB
 function setStyle(el){document.querySelectorAll('.style-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');bgtStyle=el.dataset.style;Object.assign(catValues,STYLE_DEF[bgtStyle]);renderCatSliders();calcBudget();}
 function renderCatSliders(){document.getElementById('bgtCategories').innerHTML=Object.keys(catValues).map(k=>`<div class="bgt-cat-item"><div class="bgt-cat-row"><div class="bgt-cat-name">${CAT_EMOJIS[k]} ${CAT_NAMES[k]}</div><div class="bgt-cat-val" id="cv-${k}">${catValues[k]}만원</div></div><input class="bgt-slider" type="range" min="0" max="30" value="${catValues[k]}" oninput="updCat('${k}',this.value)" style="background:linear-gradient(to right,${CAT_COLORS[k]} ${catValues[k]/30*100}%,#EDE9E4 ${catValues[k]/30*100}%)"/></div>`).join('');}
 function updCat(k,v){catValues[k]=parseInt(v);document.getElementById('cv-'+k).textContent=v+'만원';const sl=document.querySelector(`input[oninput*="'${k}'"]`);if(sl)sl.style.background=`linear-gradient(to right,${CAT_COLORS[k]} ${v/30*100}%,#EDE9E4 ${v/30*100}%)`;calcBudget();}
-function calcBudget(){const fl=parseFloat(document.getElementById('flightCost').value)||0,ht=parseFloat(document.getElementById('hotelCost').value)||0,nights=Math.max(1,bgtDays-1),daily=Object.values(catValues).reduce((a,b)=>a+b,0),flT=fl*bgtPeople,htT=ht*nights,catT=daily*bgtDays*bgtPeople,total=flT+htT+catT;document.getElementById('bgtTotal').textContent=Math.round(total).toLocaleString()+'만원';document.getElementById('bgtPer').textContent='1인당 약 '+Math.round(total/bgtPeople).toLocaleString()+'만원';document.getElementById('bgtEmoji').textContent={budget:'😊',standard:'😎',luxury:'🤑'}[bgtStyle]||'💰';const items=[{k:'항공',amt:flT,c:'#FF5F1F'},{k:'숙박',amt:htT,c:'#9B59B6'},{k:'식비',amt:catValues.food*bgtDays*bgtPeople,c:'#FF8C42'},{k:'액티비티',amt:catValues.activity*bgtDays*bgtPeople,c:'#00C9A7'},{k:'교통',amt:catValues.transport*bgtDays*bgtPeople,c:'#FFCC00'},{k:'쇼핑',amt:catValues.shopping*bgtDays*bgtPeople,c:'#3498DB'},{k:'기타',amt:catValues.misc*bgtDays*bgtPeople,c:'#95A5A6'}];const mx=Math.max(...items.map(i=>i.amt),1);document.getElementById('bgtBreakdown').innerHTML=items.map(i=>`<div class="bgt-bar-item"><div class="bgt-bar-label">${i.k}</div><div class="bgt-bar-track"><div class="bgt-bar-fill" style="width:${Math.round(i.amt/mx*100)}%;background:${i.c};"></div></div><div class="bgt-bar-amt">${Math.round(i.amt).toLocaleString()}만</div></div>`).join('');const tips=STYLE_TIPS[bgtStyle]||[];document.getElementById('bgtTips').innerHTML=`<div class="bgt-tips"><div class="bgt-tips-ttl"><i class="ti ti-bulb"></i> 여행 꿀팁</div>${tips.map(t=>`<div class="bgt-tip-item">💡 ${t}</div>`).join('')}</div>`;}
+function calcBudget(){var fl=Math.max(0,parseFloat(document.getElementById('flightCost').value)||0),ht=Math.max(0,parseFloat(document.getElementById('hotelCost').value)||0),nights=Math.max(1,bgtDays-1),daily=Object.values(catValues).reduce((a,b)=>a+b,0),flT=fl*bgtPeople,htT=ht*nights,catT=daily*bgtDays*bgtPeople,total=flT+htT+catT;document.getElementById('bgtTotal').textContent=Math.round(total).toLocaleString()+'만원';document.getElementById('bgtPer').textContent='1인당 약 '+Math.round(total/bgtPeople).toLocaleString()+'만원';document.getElementById('bgtEmoji').textContent={budget:'😊',standard:'😎',luxury:'🤑'}[bgtStyle]||'💰';const items=[{k:'항공',amt:flT,c:'#FF5F1F'},{k:'숙박',amt:htT,c:'#9B59B6'},{k:'식비',amt:catValues.food*bgtDays*bgtPeople,c:'#FF8C42'},{k:'액티비티',amt:catValues.activity*bgtDays*bgtPeople,c:'#00C9A7'},{k:'교통',amt:catValues.transport*bgtDays*bgtPeople,c:'#FFCC00'},{k:'쇼핑',amt:catValues.shopping*bgtDays*bgtPeople,c:'#3498DB'},{k:'기타',amt:catValues.misc*bgtDays*bgtPeople,c:'#95A5A6'}];const mx=Math.max(...items.map(i=>i.amt),1);document.getElementById('bgtBreakdown').innerHTML=items.map(i=>`<div class="bgt-bar-item"><div class="bgt-bar-label">${i.k}</div><div class="bgt-bar-track"><div class="bgt-bar-fill" style="width:${Math.round(i.amt/mx*100)}%;background:${i.c};"></div></div><div class="bgt-bar-amt">${Math.round(i.amt).toLocaleString()}만</div></div>`).join('');const tips=STYLE_TIPS[bgtStyle]||[];document.getElementById('bgtTips').innerHTML=`<div class="bgt-tips"><div class="bgt-tips-ttl"><i class="ti ti-bulb"></i> 여행 꿀팁</div>${tips.map(t=>`<div class="bgt-tip-item">💡 ${t}</div>`).join('')}</div>`;}
 
 /* ══ COMMUNITY ══ */
 function getComments(id){
@@ -2368,7 +2391,7 @@ function toggleMarketLike(id,e){
   toast(marketLikes[id]?'♥ 좋아요!':'좋아요 취소');
 }
 function renderMarket(){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:t.originalAuthor||null,isMine:true,days:(t.days||[]).map(d=>({title:d.title}))}));
+  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:fmtDuration(t.start,t.end),author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:t.originalAuthor||null,isMine:true,days:(t.days||[]).map(d=>({title:d.title}))}));
   const all=[...MARKET_DATA,...publicTrips];
   const filtered=mfFilter==='전체'?all:all.filter(t=>t.dest&&t.dest.includes(mfFilter));
   document.getElementById('marketList').innerHTML=filtered.length?filtered.map(t=>{
@@ -2480,7 +2503,7 @@ function viewTrip(id){
     title:t.name,
     destination:t.dest||'',
     companion:t.companion||'',
-    duration:t.start&&t.end?((getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일'):'',
+    duration:fmtDuration(t.start,t.end),
     tripId:t.id,
     days:(t.days||[]).map(function(d){
       return{
@@ -2721,7 +2744,7 @@ function genFeedItems(dayTitle,dest){
 }
 
 function openFeedDetail(id){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:(getDays(t.start,t.end)-1)+'박 '+getDays(t.start,t.end)+'일',author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,likes:0,isMine:true,days:(t.days||[])}));
+  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:fmtDuration(t.start,t.end),author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,likes:0,isMine:true,days:(t.days||[])}));
   const all=[...MARKET_DATA,...publicTrips];
   const t=all.find(x=>x.id===id);
   if(!t)return;
@@ -2907,6 +2930,35 @@ function adjustDaysToTrip(planDays, start, end){
     }
   }
   return days;
+}
+
+
+// 박/일 표시 (당일치기는 "당일 일정")
+function fmtDuration(start,end){
+  if(!start||!end)return'';
+  var d=getDays(start,end);
+  if(d<=1)return'당일 일정';
+  return (d-1)+'박 '+d+'일';
+}
+
+
+// 시간 드롭다운 옵션 생성
+function buildTimeOptions(selected){
+  var opts=['<option value="">시간</option>'];
+  var periods=[['오전',6,11],['오후',12,17],['저녁',18,21],['밤',22,23],['새벽',0,5]];
+  periods.forEach(function(p){
+    var label=p[0];
+    for(var h=p[1];h<=p[2];h++){
+      // 12시간제 표시
+      var dispH=h;
+      if(label==='오후'&&h>12)dispH=h-12;
+      if(label==='저녁')dispH=h-12;
+      if(label==='밤')dispH=h-12;
+      var val=label+' '+dispH+'시';
+      opts.push('<option value="'+val+'"'+(selected===val?' selected':'')+'>'+val+'</option>');
+    }
+  });
+  return opts.join('');
 }
 
 </script>
