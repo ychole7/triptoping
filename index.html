@@ -956,6 +956,14 @@ html{scroll-behavior:smooth;}
 
 .asc-num{position:absolute;z-index:3;top:14px;left:16px;background:rgba(255,255,255,.3);backdrop-filter:blur(4px);color:white;font-family:'Black Han Sans',sans-serif;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.5px;}
 
+
+.si-move{display:flex;flex-direction:column;gap:1px;margin-right:2px;}
+.si-mv-btn{width:24px;height:18px;border:none;background:#F0EEE9;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--gy);transition:all .15s;padding:0;}
+.si-mv-btn:hover:not(:disabled){background:var(--or);color:white;}
+.si-mv-btn:active:not(:disabled){transform:scale(.9);}
+.si-mv-btn:disabled{opacity:.3;cursor:default;}
+.si-mv-btn i{font-size:13px;}
+
 </style>
 </head>
 <body>
@@ -2175,7 +2183,12 @@ function getPlan(q){const l=q.toLowerCase();
   if(l.includes('런던')||l.includes('영국'))return PLANS['런던'];
   return PLANS['나트랑'];
 }
-function renderPlan(plan){currentPlan=plan;document.getElementById('planTtl').textContent='🍕 '+plan.title;document.getElementById('planMeta').innerHTML=`<span><i class="ti ti-users"></i> ${plan.companion}</span><span><i class="ti ti-calendar"></i> ${plan.duration}</span><span><i class="ti ti-map-pin"></i> ${plan.destination}</span>`;document.getElementById('ptops').innerHTML=myTops.map(t=>`<span class="ptb">🍕 ${t.title||t.name}</span>`).join('');document.getElementById('planDayTabs').innerHTML=plan.days.map((d,i)=>`<div class="dtab${i===0?' on':''}" onclick="switchPD(${i})">Day ${i+1} · ${d.title}</div>`).join('');showScr('s-plan');setNav('nb-my');setTimeout(()=>{if(!map){map=L.map('map',{zoomControl:true,attributionControl:false}).setView([13.75,100.5],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);}map.invalidateSize();renderPD(0);},80);}
+function renderPlan(plan,isSaved){currentPlan=plan;document.getElementById('planTtl').textContent='🍕 '+plan.title;
+  // 저장된 플랜이면 저장버튼 숨기고, 새 플랜이면 표시
+  var saveBtn=document.querySelector('#planBtns button[onclick*="savePlanToTrips"]');
+  if(saveBtn)saveBtn.style.display=isSaved?'none':'';
+  var saveBn=document.getElementById('saveBanner');
+  if(saveBn&&isSaved)saveBn.style.display='none';document.getElementById('planMeta').innerHTML=`<span><i class="ti ti-users"></i> ${plan.companion}</span><span><i class="ti ti-calendar"></i> ${plan.duration}</span><span><i class="ti ti-map-pin"></i> ${plan.destination}</span>`;document.getElementById('ptops').innerHTML=myTops.map(t=>`<span class="ptb">🍕 ${t.title||t.name}</span>`).join('');document.getElementById('planDayTabs').innerHTML=plan.days.map((d,i)=>`<div class="dtab${i===0?' on':''}" onclick="switchPD(${i})">Day ${i+1} · ${d.title}</div>`).join('');showScr('s-plan');setNav('nb-my');setTimeout(()=>{if(!map){map=L.map('map',{zoomControl:true,attributionControl:false}).setView([13.75,100.5],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);}map.invalidateSize();renderPD(0);},80);}
 const DC=['#FF5F1F','#00C9A7','#FFCC00'];
 function mkIcon(n,c){return L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:${c};transform:rotate(-45deg);border:2px solid white;display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:10px;font-weight:700;">${n}</span></div>`,iconSize:[24,24],iconAnchor:[12,24],popupAnchor:[0,-26]});}
 function switchPD(i){document.querySelectorAll('.dtab').forEach((t,j)=>t.classList.toggle('on',j===i));renderPD(i);}
@@ -2250,7 +2263,7 @@ function delHotel(i){const t=getTrip();if(!t)return;t.hotels.splice(i,1);saveTD(
 function renderDayTabs(){const t=getTrip();if(!t)return;document.getElementById('dayTabRow').innerHTML=(t.days||[]).map((d,i)=>`<div class="d-tab${i===currentDayIdx?' on':''}" onclick="switchDay(${i})">Day ${i+1}</div>`).join('')+`<div class="add-d-tab" onclick="addDay()"><i class="ti ti-plus"></i> 추가</div>`;}
 function switchDay(i){currentDayIdx=i;renderDayTabs();renderDayEdit();}
 function addDay(){const t=getTrip();if(!t)return;t.days.push({title:`Day ${t.days.length+1}`,items:[]});currentDayIdx=t.days.length-1;saveTD();renderDayTabs();renderDayEdit();toast('📅 Day 추가!');}
-function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}" draggable="true" ondragstart="dStart(${i})" ondragover="dOver(event,${i})" ondrop="dDrop(event,${i})" ondragend="dEnd()"><div class="si-top"><i class="ti ti-grip-vertical si-drag"></i><div class="si-dot sd${i%3}"></div><input class="si-time" value="${item.time||''}" onchange="updItem(${i},'time',this.value)" placeholder="시간"/><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/><button class="si-del-btn" onclick="delItem(${i})"><i class="ti ti-x"></i></button></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
+function renderDayEdit(){const t=getTrip();if(!t||!t.days[currentDayIdx])return;const day=t.days[currentDayIdx];document.getElementById('dayEditBody').innerHTML=`<div class="d-title-row"><input class="d-title-inp" value="${day.title}" onchange="updDayTtl(this.value)" placeholder="Day 제목"/>${t.days.length>1?`<button class="del-d-btn" onclick="delDay(${currentDayIdx})"><i class="ti ti-trash"></i></button>`:''}</div>${(day.items||[]).map((item,i)=>`<div class="sched-item" id="si-${i}" draggable="true" ondragstart="dStart(${i})" ondragover="dOver(event,${i})" ondrop="dDrop(event,${i})" ondragend="dEnd()"><div class="si-top"><i class="ti ti-grip-vertical si-drag"></i><div class="si-dot sd${i%3}"></div><input class="si-time" value="${item.time||''}" onchange="updItem(${i},'time',this.value)" placeholder="시간"/><input class="si-name" value="${item.name||''}" onchange="updItem(${i},'name',this.value)" placeholder="장소·활동 이름"/><div class="si-move"><button class="si-mv-btn" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}><i class="ti ti-chevron-up"></i></button><button class="si-mv-btn" onclick="moveItem(${i},1)" ${i===(day.items||[]).length-1?'disabled':''}><i class="ti ti-chevron-down"></i></button></div><button class="si-del-btn" onclick="delItem(${i})"><i class="ti ti-x"></i></button></div><textarea class="si-desc" onchange="updItem(${i},'desc',this.value)" placeholder="메모">${item.desc||''}</textarea></div>`).join('')}<button class="add-sched-btn" onclick="addItem()"><i class="ti ti-plus"></i> 일정 추가</button>`;}
 function updDayTtl(v){const t=getTrip();if(t&&t.days[currentDayIdx]){t.days[currentDayIdx].title=v;saveTD();renderDayTabs();}}
 function updItem(i,k,v){const t=getTrip();if(t&&t.days[currentDayIdx]&&t.days[currentDayIdx].items[i]){t.days[currentDayIdx].items[i][k]=v;saveTD();}}
 function addItem(){const t=getTrip();if(!t)return;t.days[currentDayIdx].items.push({time:'',name:'',desc:''});saveTD();renderDayEdit();toast('📍 일정 추가!');}
@@ -2477,7 +2490,7 @@ function viewTrip(id){
       };
     })
   };
-  renderPlan(plan);
+  renderPlan(plan, true);  // 저장된 플랜
   // plan-hdr에 편집 버튼 동적 추가
   var editBtn=document.getElementById('planEditBtn');
   if(!editBtn){
@@ -2848,6 +2861,18 @@ function togglePopTop(id){
   if(aiGenTops.length && document.getElementById('aiCardStageWrap').style.display!=='none'){
     drawCurrentCard();
   }
+}
+
+
+function moveItem(idx,dir){
+  const t=getTrip();if(!t||!t.days[currentDayIdx])return;
+  const items=t.days[currentDayIdx].items;
+  const ni=idx+dir;
+  if(ni<0||ni>=items.length)return;
+  // swap
+  const tmp=items[idx];items[idx]=items[ni];items[ni]=tmp;
+  saveTD();
+  renderDayEdit();
 }
 
 </script>
