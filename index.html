@@ -1001,7 +1001,7 @@ html{scroll-behavior:smooth;}
       </div>
     </div>
     <div class="menu-footer">
-      <div class="mf-item" onclick="toast('설정 (준비 중)')"><i class="ti ti-settings"></i> 설정</div>
+      <div class="mf-item" onclick="openApiKeyModal();closeMenu()"><i class="ti ti-settings"></i> AI 설정</div>
       <div class="mf-item" onclick="toast('고객센터 (준비 중)')"><i class="ti ti-help-circle"></i> 고객센터</div>
     </div>
   </div>
@@ -1591,6 +1591,28 @@ html{scroll-behavior:smooth;}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+
+/* ══ AI API ══ */
+function getApiKey(){ try{return localStorage.getItem('tt_api_key')||'';}catch(e){return'';} }
+function setApiKey(k){ try{localStorage.setItem('tt_api_key',k);}catch(e){} }
+function hasApiKey(){ return true; }  // 서버에 키가 있으므로 항상 AI 사용 가능
+
+async function callClaude(systemPrompt, userPrompt, maxTokens){
+  // 서버 함수(/api/plan)를 호출 — API 키는 서버에 안전하게 숨겨져 있음
+  const resp=await fetch('/api/plan',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      system:systemPrompt,
+      userPrompt:userPrompt,
+      maxTokens:maxTokens||1500
+    })
+  });
+  const data=await resp.json();
+  if(data.error)throw new Error(data.error||'API 오류');
+  return data.text||'';
+}
+
 /* ══ DATA ══ */
 const TOPPINGS=[
   {emoji:'📸',title:'인스타 감성',desc:'포토스팟, 감성 카페, 루프탑 뷰',tags:['포토스팟'],key:'인스타 감성'},
@@ -1746,7 +1768,11 @@ function showScr(id){document.querySelectorAll('.scr').forEach(s=>s.classList.re
 function setNav(id){document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));if(id){const el=document.getElementById(id);if(el)el.classList.add('on');}}
 function setQ(v){document.getElementById('sinput').value=v;document.getElementById('sinput').dispatchEvent(new Event('input'));}
 
-function goSearch(){showScr('s-search');setNav('nb-search');setMenuActive('mi-search');}
+function goSearch(){
+  // 이미 플랜을 본 적 있으면 새 검색 위해 초기화
+  if(currentPlan){myTops=[];query='';currentPlan=null;document.getElementById('sinput').value='';renderSelBar();renderTbar();updateMainGen();document.getElementById('aiTopSec').style.display='none';const fg=document.getElementById('flowGuide');if(fg)fg.style.display='flex';}
+  showScr('s-search');setNav('nb-search');setMenuActive('mi-search');
+}
 function goSwipe(){if(!query){toast('먼저 여행을 입력해주세요');return;}showScr('s-swipe');setNav('nb-search');}
 function goPlanNav(){if(!currentPlan){toast('먼저 플랜을 생성해주세요');return;}showScr('s-plan');setNav('nb-my');setTimeout(()=>{if(map)map.invalidateSize();},100);}
 function goMy(){showScr('s-my');setNav('nb-my');setMenuActive('mi-my');document.getElementById('myTripsCnt').textContent=trips.length+'개 여행';document.getElementById('myPlanCnt').textContent=currentPlan?'플랜 보기':'플랜 없음';renderStats();}
@@ -1825,6 +1851,8 @@ function updateMainGen(){const q=document.getElementById('sinput').value.trim(),
 /* ══ SEARCH ══ */
 document.getElementById('sinput').addEventListener('input',()=>{
   const q=document.getElementById('sinput').value.trim();query=q;updateMainGen();
+  // 검색창을 완전히 비우면 토핑 초기화 (새 여행 준비)
+  if(!q && myTops.length){myTops=[];renderSelBar();renderTbar();updateMainGen();}
   const fg=document.getElementById('flowGuide');
   if(fg)fg.style.display=q?'none':'flex';
   if(q.length>=2){document.getElementById('aiTopSec').style.display='block';triggerAiTops(q);}
@@ -1857,8 +1885,8 @@ function triggerAiTops(q){
 }
 async function fetchAiTops(q){
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:'여행 검색어 분석 후 구체적 장소/액티비티 토핑 5~6개 추천. 카테고리 말고 실제 장소명으로. 순수 JSON만: {"toppings":[{"emoji":"🎡","name":"빈펄랜드","desc":"케이블카+워터파크"}]}',messages:[{role:'user',content:`여행: "${q}"`}]})});
-    const data=await resp.json();const raw=(data.content||[]).map(c=>c.text||'').join('');
+    const sys='여행 검색어 분석 후 구체적 장소/액티비티 토핑 5~6개 추천. 카테고리 말고 실제 장소명으로. 순수 JSON만: {"toppings":[{"emoji":"🎡","name":"빈펄랜드","desc":"케이블카+워터파크"}]}';
+    const raw=await callClaude(sys, `여행: "${q}"`, 500);
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     if(parsed&&parsed.toppings){const tops=parsed.toppings.map((t,i)=>({...t,id:'ai_'+i,key:'ai_'+t.name,isAI:true}));aiCache[q]=tops;aiGenTops=tops;renderAiSwipeCards(tops);document.getElementById('aiTopLbl').textContent=' AI 맞춤 토핑';}
     else fallbackAi(q);
@@ -2044,7 +2072,48 @@ document.getElementById('addBtn').addEventListener('click',()=>{if(curCard&&card
 document.getElementById('swGenBtn').addEventListener('click',()=>{query=document.getElementById('sinput').value.trim()||query;triggerGenPlan();});
 
 /* ══ PLAN ══ */
-function triggerGenPlan(){showScr('s-load');setNav('nb-my');const STS=['st1','st2','st3','st4'];let si=0;STS.forEach(s=>document.getElementById(s).className='step');document.getElementById(STS[0]).classList.add('on');const iv=setInterval(()=>{if(si<STS.length-1){document.getElementById(STS[si]).className='step dn';si++;document.getElementById(STS[si]).classList.add('on');}},700);setTimeout(()=>{clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');renderPlan(getPlan(query));},3000);}
+function triggerGenPlan(){
+  showScr('s-load');setNav('nb-my');
+  const STS=['st1','st2','st3','st4'];let si=0;
+  STS.forEach(s=>document.getElementById(s).className='step');
+  document.getElementById(STS[0]).classList.add('on');
+  const iv=setInterval(()=>{if(si<STS.length-1){document.getElementById(STS[si]).className='step dn';si++;document.getElementById(STS[si]).classList.add('on');}},700);
+
+  // 매칭되는 도시인지 확인
+  const matched=isMatchedCity(query);
+
+  if(matched || !hasApiKey()){
+    // 기존 데이터 사용 (매칭됨 or API키 없음)
+    setTimeout(()=>{clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');renderPlan(getPlan(query));},3000);
+  }else{
+    // AI로 새 플랜 생성
+    genAiPlan(query).then(plan=>{
+      clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
+      renderPlan(plan);
+    }).catch(e=>{
+      clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
+      toast('AI 생성 실패 — 기본 플랜으로 대체');
+      renderPlan(getPlan(query));
+    });
+  }
+}
+
+// 매칭 도시 판별 (기존 9개)
+function isMatchedCity(q){
+  const l=q.toLowerCase();
+  const cities=['나트랑','베트남','다낭','오사카','교토','간사이','도쿄','일본','방콕','태국','제주','발리','인도네시아','싱가포르','파리','프랑스','런던','영국'];
+  return cities.some(c=>l.includes(c));
+}
+
+// AI 플랜 생성
+async function genAiPlan(q){
+  const sys='너는 여행 일정 전문가야. 사용자의 여행 요청을 분석해서 구체적인 일정을 JSON으로만 응답해. 실제 존재하는 장소명을 쓰고, 위도·경도(lat,lng)도 정확히 넣어. 설명 없이 순수 JSON만 출력:\n{"title":"도시 N박N일 여행","destination":"도시, 국가","companion":"동행","duration":"N박 N일","days":[{"title":"Day 제목","items":[{"time":"오전 9시","name":"장소명","desc":"간단설명","lat":35.6,"lng":139.7}]}]}\n각 day는 3-4개 항목. 일수는 요청에 맞게.';
+  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 토핑(취향): '+myTops.map(t=>t.title||t.name).join(', '), 2500);
+  const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+  // days items에 tags 보강
+  (parsed.days||[]).forEach(d=>{(d.items||[]).forEach(it=>{ if(!it.tags)it.tags=[]; });});
+  return parsed;
+}
 function getPlan(q){const l=q.toLowerCase();
   if(l.includes('나트랑')||l.includes('베트남')||l.includes('다낭'))return PLANS['나트랑'];
   if(l.includes('오사카')||l.includes('교토')||l.includes('간사이'))return PLANS['오사카'];
@@ -2684,6 +2753,26 @@ function submitFeedComment(){
   toast('💬 댓글이 등록됐어요!');
 }
 
+
+/* ══ API KEY MODAL ══ */
+function openApiKeyModal(){
+  document.getElementById('apiKeyOverlay').style.display='flex';
+}
+function saveApiKey(){
+  const inp=document.getElementById('apiKeyInput');
+  const k=inp.value.trim();
+  if(!k){toast('키를 입력해주세요');return;}
+  if(!k.startsWith('sk-ant-')){toast('올바른 Anthropic 키 형식이 아니에요');return;}
+  setApiKey(k);
+  document.getElementById('apiKeyOverlay').style.display='none';
+  toast('🤖 AI 플랜 생성이 활성화됐어요!');
+}
+function clearApiKeyModal(){
+  setApiKey('');
+  document.getElementById('apiKeyOverlay').style.display='none';
+  toast('키가 삭제됐어요');
+}
+
 </script>
 
 <!-- SHARE MODAL -->
@@ -2736,6 +2825,24 @@ function submitFeedComment(){
         <i class="ti ti-device-floppy"></i> 저장하기
       </button>
       <button class="date-modal-skip" onclick="savePlanSkipDate()">날짜는 나중에 입력할게요</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- API 키 설정 모달 -->
+<div class="date-modal-overlay" id="apiKeyOverlay" style="display:none;">
+  <div class="date-modal-sheet">
+    <div class="date-modal-handle"></div>
+    <div class="date-modal-body">
+      <div class="date-modal-ttl">🤖 AI 여행 플래너</div>
+      <div class="date-modal-sub">트립토핑은 Claude AI로<br>어떤 여행지든 실시간 일정을 생성해요</div>
+      <div style="background:#F5F3EF;border-radius:12px;padding:14px;margin-bottom:14px;font-size:12px;line-height:1.8;color:var(--dk);">
+        ✨ <b>어떤 여행지든 OK</b><br>속초, 푸꾸옥, 세부 등 자유 입력<br><br>
+        🍕 <b>취향 토핑 반영</b><br>선택한 토핑이 일정에 반영돼요<br><br>
+        🔒 <b>안전한 처리</b><br>AI는 서버에서 안전하게 작동해요
+      </div>
+      <button class="date-modal-save" onclick="document.getElementById('apiKeyOverlay').style.display='none'"><i class="ti ti-check"></i> 확인</button>
     </div>
   </div>
 </div>
