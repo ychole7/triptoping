@@ -1133,13 +1133,6 @@ html{scroll-behavior:smooth;}
     <div class="ex-q" onclick="setQ('가족 싱가포르 4일 여행')">🦁 싱가포르</div>
     <div class="ex-q" onclick="setQ('혼자 런던 5일 유럽 여행')">🎡 런던 혼행</div>
   </div>
-
-  <!-- 인기 토핑 -->
-  <div class="sec-hdr" style="margin-top:10px;">
-    <div class="sec-ttl"><i class="ti ti-flame"></i> 인기 토핑</div>
-    <div class="sec-more" onclick="goCommToppings()">전체보기 <i class="ti ti-arrow-right"></i></div>
-  </div>
-  <div class="top-scroll" id="mainCommScroll"></div>
 </div>
 
 <!-- SWIPE -->
@@ -1886,7 +1879,9 @@ document.getElementById('mainGenBtn').addEventListener('click',()=>{query=docume
 
 /* ══ MAIN COMM CARDS ══ */
 function renderMainComm(){
-  document.getElementById('mainCommScroll').innerHTML=[...commTops].sort((a,b)=>b.likes-a.likes).slice(0,8).map(t=>{
+  var _mcs=document.getElementById('mainCommScroll');
+  if(!_mcs)return;
+  _mcs.innerHTML=[...commTops].sort((a,b)=>b.likes-a.likes).slice(0,8).map(t=>{
     const added=hasTop({key:t.id});
     return`<div class="top-card${added?' added':''}"><div class="tc-em">${t.emoji}</div><div class="tc-nm">${t.name}</div><div class="tc-ds">${t.desc}</div><div class="tc-ft"><div class="tc-lk"><i class="ti ti-heart"></i> ${t.likes}</div><div class="tc-add${added?' on':''}" onclick="toggleCM('${t.id}')"><i class="ti ti-${added?'check':'plus'}"></i></div></div></div>`;
   }).join('');
