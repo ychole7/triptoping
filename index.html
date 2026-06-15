@@ -950,6 +950,9 @@ html{scroll-behavior:smooth;}
 .ptt-chip-check{font-size:12px;color:white;opacity:0;width:0;transition:all .18s;}
 .ptt-chip.added .ptt-chip-check{opacity:1;width:14px;}
 
+
+.asc-num{position:absolute;top:12px;left:14px;background:rgba(255,255,255,.3);backdrop-filter:blur(4px);color:white;font-family:'Black Han Sans',sans-serif;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.5px;}
+
 </style>
 </head>
 <body>
@@ -1132,6 +1135,15 @@ html{scroll-behavior:smooth;}
     <div class="ex-q" onclick="setQ('커플 파리 5일 유럽 여행')">🗼 파리 커플</div>
     <div class="ex-q" onclick="setQ('가족 싱가포르 4일 여행')">🦁 싱가포르</div>
     <div class="ex-q" onclick="setQ('혼자 런던 5일 유럽 여행')">🎡 런던 혼행</div>
+  </div>
+
+  <!-- 메인 인기 토핑 (검색 전 기본 화면) -->
+  <div id="mainPopSection">
+    <div class="sec-hdr" style="margin-top:14px;">
+      <div class="sec-ttl"><i class="ti ti-flame" style="color:var(--or);"></i> 인기 토핑</div>
+      <div class="sec-more" onclick="goCommToppings()">전체보기 <i class="ti ti-arrow-right"></i></div>
+    </div>
+    <div class="top-scroll" id="mainCommScroll"></div>
   </div>
 </div>
 
@@ -1870,8 +1882,8 @@ document.getElementById('sinput').addEventListener('input',()=>{
   if(!q && myTops.length){myTops=[];renderSelBar();renderTbar();updateMainGen();}
   const fg=document.getElementById('flowGuide');
   if(fg)fg.style.display=q?'none':'flex';
-  if(q.length>=2){document.getElementById('aiTopSec').style.display='block';document.getElementById('searchPopTops').style.display='block';renderPopTops();triggerAiTops(q);}
-  else {document.getElementById('aiTopSec').style.display='none';document.getElementById('searchPopTops').style.display='none';}
+  if(q.length>=2){document.getElementById('aiTopSec').style.display='block';document.getElementById('searchPopTops').style.display='block';renderPopTops();var _mp=document.getElementById('mainPopSection');if(_mp)_mp.style.display='none';triggerAiTops(q);}
+  else {document.getElementById('aiTopSec').style.display='none';document.getElementById('searchPopTops').style.display='none';var _mp=document.getElementById('mainPopSection');if(_mp)_mp.style.display='block';}
 });
 document.getElementById('sinput').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=document.getElementById('sinput').value.trim();if(q){query=q;startSwipe();}}});
 
@@ -1936,12 +1948,12 @@ function renderAiSwipeCards(list){
   // build fan stack (back to front)
   const stage=document.getElementById('aiCardStage');
   // 뒤 카드일수록 더 회전·옆으로 펼침 (부채꼴)
-  const fanRot=[0,7,-7];      // 앞→뒤 회전 각도
-  const fanX=[0,26,-26];      // 앞→뒤 좌우 이동
-  const fanScale=[1,0.94,0.88];
+  // 뒤 카드는 위쪽 중앙으로 살짝만 (맨 앞 카드를 명확하게)
+  const fanY=[0,-12,-22];     // 앞→뒤 위로 이동
+  const fanScale=[1,0.93,0.86];
   for(let i=Math.min(aiCardIdx+2,list.length-1);i>=aiCardIdx;i--){
     const off=i-aiCardIdx;
-    stage.appendChild(buildAiCard(list[i],30-off,fanScale[off]||0.85,fanX[off]||0,fanRot[off]||0,aiCardIdx+off));
+    stage.appendChild(buildAiCard(list[i],30-off,fanScale[off]||0.85,0,0,aiCardIdx+off,fanY[off]||-28));
   }
   aiCurCard=stage.querySelector('.ai-swipe-card:last-child');
   attachAiDrag(aiCurCard);
@@ -1963,14 +1975,16 @@ const CARD_GRADIENTS=[
   'linear-gradient(135deg,#4facfe,#00f2fe)',
   'linear-gradient(135deg,#43e97b,#38f9d7)',
 ];
-function buildAiCard(t,zi,sc,ox,rot,gradIdx){
+function buildAiCard(t,zi,sc,ox,rot,gradIdx,oy){
   const c=document.createElement('div');
   c.className='ai-swipe-card';
   const grad=CARD_GRADIENTS[(gradIdx!=null?gradIdx:aiCardIdx)%CARD_GRADIENTS.length];
-  rot=rot||0;
-  c.style.cssText=`z-index:${zi};transform:translateX(${ox}px) scale(${sc}) rotate(${rot}deg);opacity:${sc<0.85?'0.65':'1'};background:${grad};`;
+  rot=rot||0;oy=oy||0;
+  c.style.cssText=`z-index:${zi};transform:translateX(${ox}px) translateY(${oy}px) scale(${sc}) rotate(${rot}deg);opacity:${sc<0.85?'0.7':'1'};background:${grad};`;
   c.dataset.key=t.key;
-  c.innerHTML=`<div class="asc-em">${t.emoji}</div><div class="asc-ttl">${t.name}</div><div class="asc-desc">${t.desc}</div><div class="asc-tag">${t.isAI?'✨ AI 추천':'🍕 추천'}</div>`;
+  const cardNum=(gradIdx!=null?gradIdx:aiCardIdx)+1;
+  const totalNum=aiGenTops.length;
+  c.innerHTML=`<div class="asc-num">${cardNum}/${totalNum}</div><div class="asc-em">${t.emoji}</div><div class="asc-ttl">${t.name}</div><div class="asc-desc">${t.desc}</div><div class="asc-tag">${t.isAI?'✨ AI 추천':'🍕 추천'}</div>`;
   return c;
 }
 function renderAiDots(total){
@@ -2034,12 +2048,11 @@ function nextAiCard(){
   stage.querySelectorAll('.ai-swipe-card').forEach(c=>c.remove());
   if(aiCardIdx>=aiGenTops.length){showAiDone();return;}
   // 부채꼴 배치 (renderAiSwipeCards와 동일)
-  const fanRot=[0,7,-7];
-  const fanX=[0,26,-26];
-  const fanScale=[1,0.94,0.88];
+  const fanY=[0,-12,-22];
+  const fanScale=[1,0.93,0.86];
   for(let i=Math.min(aiCardIdx+2,aiGenTops.length-1);i>=aiCardIdx;i--){
     const off=i-aiCardIdx;
-    stage.appendChild(buildAiCard(aiGenTops[i],30-off,fanScale[off]||0.85,fanX[off]||0,fanRot[off]||0,aiCardIdx+off));
+    stage.appendChild(buildAiCard(aiGenTops[i],30-off,fanScale[off]||0.85,0,0,aiCardIdx+off,fanY[off]||-28));
   }
   aiCurCard=stage.querySelector('.ai-swipe-card:last-child');
   attachAiDrag(aiCurCard);
