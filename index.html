@@ -1662,6 +1662,30 @@ async function callClaude(systemPrompt, userPrompt, maxTokens){
 }
 
 /* ══ DATA ══ */
+/* ══ 추천 여행 (나중에 Supabase로 교체 가능) ══ */
+const RECOMMENDED_TRIPS=[
+  {emoji:'👨‍👧',label:'나트랑 가족',query:'6세 아이와 아빠랑 나트랑 5일 여행'},
+  {emoji:'🍂',label:'교토 단풍',query:'커플 교토 3박 4일 가을 단풍 여행'},
+  {emoji:'🏝',label:'다낭 가성비',query:'친구들이랑 다낭 4박 5일 가성비 여행'},
+  {emoji:'🌊',label:'제주 혼행',query:'혼자 제주도 2박 3일 힐링 여행'},
+  {emoji:'🗼',label:'도쿄 첫 해외',query:'커플 도쿄 3박 4일 첫 해외여행'},
+  {emoji:'⛷',label:'홋카이도 겨울',query:'가족 삿포로 홋카이도 4박 5일 겨울 여행'},
+  {emoji:'🏖',label:'세부 휴양',query:'신혼부부 세부 5일 리조트 휴양'},
+  {emoji:'🌃',label:'방콕 야시장',query:'친구들이랑 방콕 4박 5일 야시장 먹방'},
+  {emoji:'🏯',label:'경주 국내',query:'부모님과 경주 2박 3일 역사 여행'},
+  {emoji:'🗼',label:'파리 유럽',query:'커플 파리 5일 유럽 예술 여행'},
+  {emoji:'🦁',label:'싱가포르 가족',query:'가족 싱가포르 4일 시티 여행'},
+  {emoji:'🏔',label:'강릉 바다',query:'친구들과 강릉 1박 2일 바다 여행'},
+];
+
+function renderRecoTrips(){
+  const wrap=document.getElementById('recoTripRow');
+  if(!wrap)return;
+  wrap.innerHTML=RECOMMENDED_TRIPS.map(t=>
+    `<div class="ex-q" onclick="setQ('${t.query}')">${t.emoji} ${t.label}</div>`
+  ).join('');
+}
+
 const TOPPINGS=[
   {emoji:'📸',title:'인스타 감성',desc:'포토스팟, 감성 카페, 루프탑 뷰',tags:['포토스팟'],key:'인스타 감성'},
   {emoji:'🍜',title:'맛집 여행',desc:'현지 맛집, 로컬 시장, 길거리 음식',tags:['현지맛집'],key:'맛집 여행'},
@@ -3003,29 +3027,6 @@ function dismissInstall(){
 })();
 
 
-/* ══ 추천 여행 (나중에 Supabase로 교체 가능) ══ */
-const RECOMMENDED_TRIPS=[
-  {emoji:'👨‍👧',label:'나트랑 가족',query:'6세 아이와 아빠랑 나트랑 5일 여행'},
-  {emoji:'🍂',label:'교토 단풍',query:'커플 교토 3박 4일 가을 단풍 여행'},
-  {emoji:'🏝',label:'다낭 가성비',query:'친구들이랑 다낭 4박 5일 가성비 여행'},
-  {emoji:'🌊',label:'제주 혼행',query:'혼자 제주도 2박 3일 힐링 여행'},
-  {emoji:'🗼',label:'도쿄 첫 해외',query:'커플 도쿄 3박 4일 첫 해외여행'},
-  {emoji:'⛷',label:'홋카이도 겨울',query:'가족 삿포로 홋카이도 4박 5일 겨울 여행'},
-  {emoji:'🏖',label:'세부 휴양',query:'신혼부부 세부 5일 리조트 휴양'},
-  {emoji:'🌃',label:'방콕 야시장',query:'친구들이랑 방콕 4박 5일 야시장 먹방'},
-  {emoji:'🏯',label:'경주 국내',query:'부모님과 경주 2박 3일 역사 여행'},
-  {emoji:'🗼',label:'파리 유럽',query:'커플 파리 5일 유럽 예술 여행'},
-  {emoji:'🦁',label:'싱가포르 가족',query:'가족 싱가포르 4일 시티 여행'},
-  {emoji:'🏔',label:'강릉 바다',query:'친구들과 강릉 1박 2일 바다 여행'},
-];
-
-function renderRecoTrips(){
-  const wrap=document.getElementById('recoTripRow');
-  if(!wrap)return;
-  wrap.innerHTML=RECOMMENDED_TRIPS.map(t=>
-    `<div class="ex-q" onclick="setQ('${t.query}')">${t.emoji} ${t.label}</div>`
-  ).join('');
-}
 
 </script>
 
