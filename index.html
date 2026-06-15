@@ -977,6 +977,14 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .si-ctrl-btn i{font-size:13px;}
 
 </style>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#FF5F1F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="트립토핑">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
 <div class="app">
@@ -2961,6 +2969,49 @@ function buildTimeOptions(selected){
   return opts.join('');
 }
 
+
+/* ══ PWA INSTALL ══ */
+var _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  _deferredPrompt=e;
+  // 안드로이드: 설치 버튼 표시 가능 (선택)
+  showInstallHint();
+});
+
+function showInstallHint(){
+  // 이미 설치됐거나 안내 닫은 적 있으면 스킵
+  if(window.matchMedia('(display-mode: standalone)').matches)return;
+  try{ if(localStorage.getItem('tt_install_dismissed'))return; }catch(e){}
+  var bar=document.getElementById('installBar');
+  if(bar)bar.style.display='flex';
+}
+
+function doInstall(){
+  if(_deferredPrompt){
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(function(){_deferredPrompt=null;dismissInstall();});
+  }else{
+    // iOS: 수동 안내
+    alert('홈 화면에 추가하기\n\n사파리 하단 공유 버튼(□↑) → "홈 화면에 추가"를 누르면 앱처럼 사용할 수 있어요!');
+    dismissInstall();
+  }
+}
+function dismissInstall(){
+  var bar=document.getElementById('installBar');
+  if(bar)bar.style.display='none';
+  try{ localStorage.setItem('tt_install_dismissed','1'); }catch(e){}
+}
+
+// iOS는 beforeinstallprompt 미지원 → 사파리면 안내 배너 표시
+(function(){
+  var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches;
+  if(isIOS && !isStandalone){
+    setTimeout(showInstallHint, 3000);
+  }
+})();
+
 </script>
 
 <!-- SHARE MODAL -->
@@ -3033,6 +3084,18 @@ function buildTimeOptions(selected){
       <button class="date-modal-save" onclick="document.getElementById('apiKeyOverlay').style.display='none'"><i class="ti ti-check"></i> 확인</button>
     </div>
   </div>
+</div>
+
+
+<!-- PWA 설치 안내 배너 -->
+<div id="installBar" style="display:none;position:fixed;bottom:74px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:396px;background:white;border:1.5px solid #FFE4D4;border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(255,95,31,.18);z-index:1600;align-items:center;gap:11px;">
+  <div style="font-size:30px;flex-shrink:0;">🍕</div>
+  <div style="flex:1;">
+    <div style="font-family:'Black Han Sans',sans-serif;font-size:13px;color:#1A1A1A;margin-bottom:1px;">앱으로 설치하기</div>
+    <div style="font-size:11px;color:#888;line-height:1.4;">홈 화면에 추가하면 앱처럼 빠르게!</div>
+  </div>
+  <button onclick="doInstall()" style="flex-shrink:0;background:linear-gradient(135deg,#FF5F1F,#FF8C42);border:none;border-radius:10px;padding:8px 14px;color:white;font-family:'Black Han Sans',sans-serif;font-size:12px;cursor:pointer;">설치</button>
+  <button onclick="dismissInstall()" style="flex-shrink:0;background:none;border:none;color:#C8C5C0;cursor:pointer;font-size:18px;padding:2px;"><i class="ti ti-x"></i></button>
 </div>
 
 </body>
