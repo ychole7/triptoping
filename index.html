@@ -591,7 +591,7 @@ body{font-family:'Gowun Dodum',sans-serif;color:var(--dk);background:#ECEAE6;dis
 /* ── AI 토핑 카드 슬라이더 (새 스타일) ── */
 .ai-swipe-hint{font-size:11px;color:var(--gy);letter-spacing:.3px;}
 .ai-card-stage-wrap{padding:0 0 8px;position:relative;overflow:hidden;}
-.ai-card-stage{position:relative;height:210px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.ai-card-stage{position:relative;height:225px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
 .ai-card-up-hint{display:none;}
 .ai-fb-add,.ai-fb-skip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:40px;padding:8px 20px;font-size:14px;font-family:'Black Han Sans',sans-serif;opacity:0;pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-lg);}
 .ai-fb-add{background:var(--mi);color:white;}
@@ -1956,27 +1956,36 @@ function renderAiSwipeCards(list){
   aiGenTops=list||[];aiCardIdx=0;
   clearAiStage();
   if(!list||!list.length)return;
-  // build fan stack (back to front)
-  const stage=document.getElementById('aiCardStage');
-  // 뒤 카드일수록 더 회전·옆으로 펼침 (부채꼴)
-  // 뒤 카드는 위쪽 중앙으로 살짝만 (맨 앞 카드를 명확하게)
-  const fanY=[0,-12,-22];     // 앞→뒤 위로 이동
-  const fanScale=[1,0.93,0.86];
-  for(let i=Math.min(aiCardIdx+2,list.length-1);i>=aiCardIdx;i--){
-    const off=i-aiCardIdx;
-    stage.appendChild(buildAiCard(list[i],30-off,fanScale[off]||0.85,0,0,aiCardIdx+off,fanY[off]||-28));
-  }
-  aiCurCard=stage.querySelector('.ai-swipe-card:last-child');
-  attachAiDrag(aiCurCard);
-  renderAiDots(list.length);
-  document.getElementById('aiCardCtr').textContent=(aiCardIdx+1)+' / '+list.length;
-  // show hint
-  const hint=document.getElementById('aiSwipeHint');
-  if(hint)hint.style.display='';
   document.getElementById('aiCardStageWrap').style.display='block';
-  // hide done
   const doneW=document.getElementById('aiDoneWrap');
   if(doneW)doneW.style.display='none';
+  const hint=document.getElementById('aiSwipeHint');
+  if(hint)hint.style.display='';
+  drawCurrentCard();
+}
+
+// 현재 카드 1장 + 뒤 장식 카드(내용 없음)
+function drawCurrentCard(){
+  const stage=document.getElementById('aiCardStage');
+  stage.querySelectorAll('.ai-swipe-card,.ai-ghost-card').forEach(c=>c.remove());
+  if(aiCardIdx>=aiGenTops.length){showAiDone();return;}
+  const remain=aiGenTops.length-aiCardIdx;
+  if(remain>2){
+    const g2=document.createElement('div');g2.className='ai-ghost-card';
+    g2.style.cssText='position:absolute;width:268px;height:188px;border-radius:26px;z-index:8;transform:translateY(16px) scale(.9);background:'+CARD_GRADIENTS[(aiCardIdx+2)%CARD_GRADIENTS.length]+';opacity:.5;box-shadow:0 12px 32px rgba(0,0,0,.1);';
+    stage.appendChild(g2);
+  }
+  if(remain>1){
+    const g1=document.createElement('div');g1.className='ai-ghost-card';
+    g1.style.cssText='position:absolute;width:268px;height:188px;border-radius:26px;z-index:9;transform:translateY(8px) scale(.95);background:'+CARD_GRADIENTS[(aiCardIdx+1)%CARD_GRADIENTS.length]+';opacity:.72;box-shadow:0 12px 32px rgba(0,0,0,.12);';
+    stage.appendChild(g1);
+  }
+  const front=buildAiCard(aiGenTops[aiCardIdx],20,1,0,0,aiCardIdx,0);
+  stage.appendChild(front);
+  aiCurCard=front;
+  attachAiDrag(aiCurCard);
+  renderAiDots(aiGenTops.length);
+  document.getElementById('aiCardCtr').textContent=(aiCardIdx+1)+' / '+aiGenTops.length;
 }
 const CARD_GRADIENTS=[
   'linear-gradient(135deg,#FF5F1F,#FF8C42)',
@@ -1995,14 +2004,7 @@ function buildAiCard(t,zi,sc,ox,rot,gradIdx,oy){
   c.dataset.key=t.key;
   const cardNum=(gradIdx!=null?gradIdx:aiCardIdx)+1;
   const totalNum=aiGenTops.length;
-  const isFront=(gradIdx==null||gradIdx===aiCardIdx);
-  if(isFront){
-    c.innerHTML=`<div class="asc-num">${cardNum}/${totalNum}</div><div class="asc-em">${t.emoji}</div><div class="asc-ttl">${t.name}</div><div class="asc-desc">${t.desc}</div><div class="asc-tag">${t.isAI?'✨ AI 추천':'🍕 추천'}</div>`;
-  }else{
-    // 뒤 카드는 배경만 (내용 숨김 - 맨 앞 카드를 명확하게)
-    c.innerHTML='';
-    c.style.cursor='default';
-  }
+  c.innerHTML=`<div class="asc-num">${cardNum}/${totalNum}</div><div class="asc-em">${t.emoji}</div><div class="asc-ttl">${t.name}</div><div class="asc-desc">${t.desc}</div><div class="asc-tag">${t.isAI?'✨ AI 추천':'🍕 추천'}</div>`;
   return c;
 }
 function renderAiDots(total){
@@ -2035,7 +2037,7 @@ function attachAiDrag(card){
     document.getElementById('aiCardUpHint').classList.remove('hot');
     if(aiCardCx>80)doAiAdd(card);
     else if(aiCardCx<-80)doAiSkip(card);
-    else{card.style.transition='transform .32s cubic-bezier(.34,1.4,.64,1)';card.style.transform='translateX(0) scale(1)';setTimeout(()=>card.style.transition='',350);}
+    else{card.style.transition='transform .32s cubic-bezier(.34,1.4,.64,1)';card.style.transform='translate(0,0) scale(1) rotate(0deg)';setTimeout(()=>card.style.transition='',350);}
   }
   card.addEventListener('mousedown',onS);card.addEventListener('touchstart',onS,{passive:true});
 }
@@ -2062,20 +2064,7 @@ function doAiSkip(card){
   setTimeout(()=>{card.remove();aiCardIdx++;nextAiCard();},340);
 }
 function nextAiCard(){
-  const stage=document.getElementById('aiCardStage');
-  stage.querySelectorAll('.ai-swipe-card').forEach(c=>c.remove());
-  if(aiCardIdx>=aiGenTops.length){showAiDone();return;}
-  // 부채꼴 배치 (renderAiSwipeCards와 동일)
-  const fanY=[0,-12,-22];
-  const fanScale=[1,0.93,0.86];
-  for(let i=Math.min(aiCardIdx+2,aiGenTops.length-1);i>=aiCardIdx;i--){
-    const off=i-aiCardIdx;
-    stage.appendChild(buildAiCard(aiGenTops[i],30-off,fanScale[off]||0.85,0,0,aiCardIdx+off,fanY[off]||-28));
-  }
-  aiCurCard=stage.querySelector('.ai-swipe-card:last-child');
-  attachAiDrag(aiCurCard);
-  renderAiDots(aiGenTops.length);
-  document.getElementById('aiCardCtr').textContent=(aiCardIdx+1)+' / '+aiGenTops.length;
+  drawCurrentCard();
 }
 function showAiDone(){
   const stage=document.getElementById('aiCardStage');
