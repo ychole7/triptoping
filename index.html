@@ -937,6 +937,19 @@ html{scroll-behavior:smooth;}
 
 .mc-orig{display:block;font-size:10px;color:var(--mi);margin-top:3px;font-weight:600;background:#E8F9F5;padding:2px 8px;border-radius:10px;width:fit-content;}
 
+
+/* ── SEARCH POPULAR TOPPINGS ── */
+.pop-top-scroll{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;}
+.pop-top-scroll::-webkit-scrollbar{display:none;}
+.ptt-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:22px;border:1.5px solid var(--bd);background:var(--wh);cursor:pointer;transition:all .18s;box-shadow:var(--shadow-sm);white-space:nowrap;}
+.ptt-chip:active{transform:scale(.94);}
+.ptt-chip.added{background:linear-gradient(135deg,var(--or),var(--or2));border-color:transparent;}
+.ptt-chip-em{font-size:17px;}
+.ptt-chip-name{font-size:12.5px;font-weight:600;color:var(--dk);}
+.ptt-chip.added .ptt-chip-name{color:white;}
+.ptt-chip-check{font-size:12px;color:white;opacity:0;width:0;transition:all .18s;}
+.ptt-chip.added .ptt-chip-check{opacity:1;width:14px;}
+
 </style>
 </head>
 <body>
@@ -1094,6 +1107,15 @@ html{scroll-behavior:smooth;}
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- 인기 토핑 가로 스크롤 (검색 중 바로 추가) -->
+  <div id="searchPopTops" style="display:none;">
+    <div class="sec-hdr" style="margin-top:14px;">
+      <div class="sec-ttl"><i class="ti ti-flame" style="color:var(--or);"></i> 인기 토핑</div>
+      <div style="font-size:11px;color:var(--gy);">탭하면 바로 추가 →</div>
+    </div>
+    <div class="pop-top-scroll" id="popTopScroll"></div>
   </div>
 
   <!-- 추천 여행 -->
@@ -1855,8 +1877,8 @@ document.getElementById('sinput').addEventListener('input',()=>{
   if(!q && myTops.length){myTops=[];renderSelBar();renderTbar();updateMainGen();}
   const fg=document.getElementById('flowGuide');
   if(fg)fg.style.display=q?'none':'flex';
-  if(q.length>=2){document.getElementById('aiTopSec').style.display='block';triggerAiTops(q);}
-  else document.getElementById('aiTopSec').style.display='none';
+  if(q.length>=2){document.getElementById('aiTopSec').style.display='block';document.getElementById('searchPopTops').style.display='block';renderPopTops();triggerAiTops(q);}
+  else {document.getElementById('aiTopSec').style.display='none';document.getElementById('searchPopTops').style.display='none';}
 });
 document.getElementById('sinput').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=document.getElementById('sinput').value.trim();if(q){query=q;startSwipe();}}});
 
@@ -2771,6 +2793,27 @@ function clearApiKeyModal(){
   setApiKey('');
   document.getElementById('apiKeyOverlay').style.display='none';
   toast('키가 삭제됐어요');
+}
+
+
+/* ══ SEARCH POPULAR TOPPINGS ══ */
+function renderPopTops(){
+  const wrap=document.getElementById('popTopScroll');
+  if(!wrap)return;
+  const sorted=[...commTops].sort((a,b)=>b.likes-a.likes).slice(0,10);
+  wrap.innerHTML=sorted.map(t=>{
+    const top={...t,key:t.id,title:t.name};
+    const added=hasTop(top);
+    return`<div class="ptt-chip${added?' added':''}" onclick="togglePopTop('${t.id}')">
+      <span class="ptt-chip-em">${t.emoji}</span>
+      <span class="ptt-chip-name">${t.name}</span>
+      <i class="ti ti-check ptt-chip-check"></i>
+    </div>`;
+  }).join('');
+}
+function togglePopTop(id){
+  toggleCM(id);       // 기존 추가/제거 로직 재사용
+  renderPopTops();    // 칩 상태 갱신
 }
 
 </script>
