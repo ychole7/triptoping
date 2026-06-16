@@ -984,6 +984,16 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .mtm-btn.del:hover{border-color:#E74C3C;color:#E74C3C;}
 .mtm-btn i{font-size:12px;}
 
+
+.mytop-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow-sm);}
+.mytop-top{display:flex;gap:12px;align-items:flex-start;}
+.mytop-em{font-size:34px;line-height:1;flex-shrink:0;}
+.mytop-info{flex:1;}
+.mytop-name{font-family:'Black Han Sans',sans-serif;font-size:15px;color:var(--dk);margin-bottom:3px;}
+.mytop-desc{font-size:12px;color:var(--gy);line-height:1.5;margin-bottom:4px;}
+.mytop-meta{font-size:10px;color:var(--gy);}
+.mytop-acts{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd);}
+
 </style>
 
   <!-- PWA -->
@@ -1273,10 +1283,10 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <div class="mgc-sub">AI 생성 플랜 & 지도</div>
       <div class="mgc-cnt" id="myPlanCnt">플랜 없음</div>
     </div>
-    <div class="my-grid-card" onclick="goCreateTopping()">
+    <div class="my-grid-card" onclick="goMyTops()">
       <div class="mgc-em">🍕</div><div class="mgc-ttl">나만의 토핑</div>
       <div class="mgc-sub">토핑 만들고 관리</div>
-      <div class="mgc-cnt">만들어보세요</div>
+      <div class="mgc-cnt" id="myTopsCnt">만들어보세요</div>
     </div>
     <div class="my-grid-card" onclick="goBudget()">
       <div class="mgc-em">💰</div><div class="mgc-ttl">예산 계산기</div>
@@ -1475,7 +1485,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <div class="shr-row">
       <button class="back-btn" onclick="backFromCommTops()"><i class="ti ti-arrow-left"></i></button>
       <div class="shr-ttl" style="flex:1;">인기 토핑 탐색</div>
-      <button onclick="goCreateTopping()" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:7px 12px;color:white;font-family:'Black Han Sans',sans-serif;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);">
+      <button onclick="goCreateTopping('comm')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:7px 12px;color:white;font-family:'Black Han Sans',sans-serif;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);">
         <i class="ti ti-plus"></i> 만들기
       </button>
     </div>
@@ -1491,10 +1501,23 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 </div>
 
 <!-- CREATE TOPPING -->
+<!-- MY TOPPINGS LIST -->
+<div class="scr" id="s-mytops">
+  <div class="screen-hdr teal">
+    <div class="shr-row">
+      <button class="back-btn" onclick="goMy()"><i class="ti ti-arrow-left"></i></button>
+      <div class="shr-ttl" style="flex:1;">나만의 토핑</div>
+      <button onclick="goCreateTopping('my')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:7px 12px;color:white;font-family:'Black Han Sans',sans-serif;font-size:12px;cursor:pointer;"><i class="ti ti-plus"></i> 만들기</button>
+    </div>
+    <div class="shr-sub">내가 만든 토핑을 관리해요</div>
+  </div>
+  <div id="myTopsList" style="padding:16px;"></div>
+</div>
+
 <div class="scr" id="s-create-top">
   <div class="screen-hdr orange">
     <div class="shr-row">
-      <button class="back-btn" onclick="goCommHub()"><i class="ti ti-arrow-left"></i></button>
+      <button class="back-btn" onclick="backFromCreateTop()"><i class="ti ti-arrow-left"></i></button>
       <div class="shr-ttl">나만의 토핑 만들기</div>
     </div>
     <div class="shr-sub">직접 만든 토핑을 커뮤니티에 공유해요</div>
@@ -1877,13 +1900,19 @@ function backFromCommTops(){
   if(_commTopsFrom==='search'){goSearch();}
   else{goCommHub();}
 }
-function goCreateTopping(){
+var _createTopFrom='comm';
+function goCreateTopping(from){
+  _createTopFrom=from||'my';
   _editingTopId=null;
   var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
   document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
   selEmoji='🍕';selDests=[];
   if(typeof updPrev==='function')updPrev();
-  showScr('s-create-top');setNav('nb-comm');
+  showScr('s-create-top');setNav(_createTopFrom==='comm'?'nb-comm':'nb-my');
+}
+function backFromCreateTop(){
+  if(_editingTopId){_editingTopId=null;}
+  if(_createTopFrom==='comm')goCommHub();else goMyTops();
 }
 function goMarket(){showScr('s-market');setNav('nb-comm');setMenuActive('msi-market');renderMarket();}
 function goCommHub(){
@@ -1902,7 +1931,7 @@ function renderCommHubTops(){
       <div class="ctp-desc">${t.desc}</div>
       <div class="ctp-likes"><i class="ti ti-heart" style="font-size:10px;color:var(--or);"></i> ${t.likes}</div>
     </div>`).join('')+`
-    <div class="ctp-make-card" onclick="goCreateTopping()">
+    <div class="ctp-make-card" onclick="goCreateTopping('comm')">
       <div class="ctp-make-em">🍕</div>
       <div class="ctp-make-txt">나만의<br>토핑 만들기</div>
     </div>`;
@@ -2432,7 +2461,7 @@ function renderCommFull(){
     const allComments=getComments(t.id);
     const commentToggle=`<div class="ftc-toggle-comment" onclick="toggleComments('${t.id}')"><i class="ti ti-message-circle"></i> 댓글 ${allComments.length}개${openComments.has(t.id)?' ▲ 접기':' ▼ 보기'}</div>`;
     return`<div class="ftc" id="fc-${t.id}">
-      <div class="ftc-row">${rnk}<div class="ftc-em">${t.emoji}</div><div class="ftc-info"><div class="ftc-name">${t.name}</div><div class="ftc-desc">${t.desc}</div><div class="ftc-author">by ${t.author} · ${timeAgo(t.ts)}${isMyTop(t)?` <span class="my-top-badge">내 토핑</span>`:''}</div>${isMyTop(t)?`<div class="my-top-mng"><button class="mtm-btn" onclick="editMyTop('${t.id}')"><i class="ti ti-pencil"></i> 수정</button><button class="mtm-btn del" onclick="delMyTop('${t.id}')"><i class="ti ti-trash"></i> 삭제</button></div>`:''}</div>
+      <div class="ftc-row">${rnk}<div class="ftc-em">${t.emoji}</div><div class="ftc-info"><div class="ftc-name">${t.name}</div><div class="ftc-desc">${t.desc}</div><div class="ftc-author">by ${t.author} · ${timeAgo(t.ts)}${isMyTop(t)?` <span class="my-top-badge">내 토핑</span>`:''}</div></div>
       <div class="ftc-acts"><button class="lk-btn${liked?' on':''}" onclick="toggleLike('${t.id}')"><i class="ti ti-heart"></i><span class="lk-cnt" id="lc-${t.id}">${t.likes}</span></button><button class="add-top-btn${added?' done':''}" onclick="toggleFT('${t.id}')">${added?'<i class="ti ti-check"></i> 추가됨':'<i class="ti ti-plus"></i> 추가'}</button></div></div>
       ${dTags?`<div style="margin-top:5px;">${dTags}</div>`:''}
       ${commentToggle}
@@ -2457,10 +2486,10 @@ function submitTop(){const name=document.getElementById('cfName').value.trim(),d
     var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
     document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
     selEmoji='🍕';selDests=[];updPrev();
-    toast('✏️ 수정됐어요!');setTimeout(function(){goCommToppings();},600);
+    toast('✏️ 수정됐어요!');setTimeout(function(){goMyTops();},600);
     return;
   }
-  const nt={id:'u'+Date.now(),emoji:selEmoji,name,desc,author:currentUser?currentUser.name:'나',likes:0,dests:selDests,ts:Date.now()};commTops.unshift(nt);saveMyTops();document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';document.querySelectorAll('.em-opt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.dp-opt').forEach(e=>e.classList.remove('sel'));selEmoji='🍕';selDests=[];updPrev();toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');setTimeout(()=>goCommToppings(),600);}
+  const nt={id:'u'+Date.now(),emoji:selEmoji,name,desc,author:currentUser?currentUser.name:'나',likes:0,dests:selDests,ts:Date.now()};commTops.unshift(nt);saveMyTops();document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';document.querySelectorAll('.em-opt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.dp-opt').forEach(e=>e.classList.remove('sel'));selEmoji='🍕';selDests=[];updPrev();toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');setTimeout(()=>goMyTops(),600);}
 document.getElementById('subBtn').disabled=true;
 
 /* ══ MARKET ══ */
@@ -3222,16 +3251,7 @@ function syncEndMin(){
 }
 
 
-/* ══ 내 토핑 관리 ══ */
-function delMyTop(id){
-  if(!confirm('이 토핑을 삭제할까요?'))return;
-  commTops=commTops.filter(function(t){return t.id!==id;});
-  // 내가 추가했던 myTops에서도 제거
-  myTops=myTops.filter(function(t){return getTopKey(t)!==id;});
-  saveMyTops();
-  renderCommFull();renderSelBar();
-  toast('삭제됐어요');
-}
+
 
 function editMyTop(id){
   var t=commTops.find(function(x){return x.id===id;});
@@ -3250,6 +3270,46 @@ function editMyTop(id){
   if(btn){btn.innerHTML='<i class="ti ti-check"></i> 수정 완료';btn.disabled=false;}
   showScr('s-create-top');setNav('nb-comm');
   toast('✏️ 수정 모드');
+}
+
+
+/* ══ 나만의 토핑 목록 (MY) ══ */
+function goMyTops(){
+  showScr('s-mytops');setNav('nb-my');
+  renderMyTopsList();
+}
+function renderMyTopsList(){
+  var mine=commTops.filter(isMyTop);
+  var wrap=document.getElementById('myTopsList');
+  if(!wrap)return;
+  // 카운트 갱신
+  var cntEl=document.getElementById('myTopsCnt');
+  if(cntEl)cntEl.textContent=mine.length?mine.length+'개':'만들어보세요';
+  if(!mine.length){
+    wrap.innerHTML='<div style="text-align:center;padding:50px 20px;background:#F5F3EF;border-radius:16px;color:var(--gy);font-size:13px;line-height:1.7;">🍕<br><br>아직 만든 토핑이 없어요<br>나만의 여행 토핑을 만들어보세요!</div>'
+    +'<button class="new-trip-btn" onclick="goCreateTopping(\'my\')" style="margin-top:14px;"><i class="ti ti-plus"></i> 첫 토핑 만들기</button>';
+    return;
+  }
+  wrap.innerHTML=mine.map(function(t){
+    var dTags=(t.dests||[]).map(function(d){return'<span class="dtg">'+d+'</span>';}).join('');
+    return'<div class="mytop-card">'
+      +'<div class="mytop-top"><div class="mytop-em">'+t.emoji+'</div>'
+      +'<div class="mytop-info"><div class="mytop-name">'+t.name+'</div><div class="mytop-desc">'+t.desc+'</div>'
+      +'<div class="mytop-meta"><i class="ti ti-heart" style="font-size:11px;color:#FF6B6B;"></i> '+t.likes+' · '+timeAgo(t.ts)+'</div></div></div>'
+      +(dTags?'<div style="margin-top:8px;">'+dTags+'</div>':'')
+      +'<div class="mytop-acts"><button class="mtm-btn" onclick="editMyTop(\''+t.id+'\')"><i class="ti ti-pencil"></i> 수정</button>'
+      +'<button class="mtm-btn del" onclick="delMyTopFromList(\''+t.id+'\')"><i class="ti ti-trash"></i> 삭제</button></div>'
+      +'</div>';
+  }).join('');
+}
+// MY 목록에서 삭제 (삭제 후 목록 갱신)
+function delMyTopFromList(id){
+  if(!confirm('이 토핑을 삭제할까요?'))return;
+  commTops=commTops.filter(function(t){return t.id!==id;});
+  myTops=myTops.filter(function(t){return getTopKey(t)!==id;});
+  saveMyTops();
+  renderMyTopsList();renderSelBar();
+  toast('삭제됐어요');
 }
 
 </script>
