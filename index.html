@@ -976,6 +976,14 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .si-ctrl-btn.del:hover{border-color:#E74C3C;color:#E74C3C;}
 .si-ctrl-btn i{font-size:13px;}
 
+
+.my-top-badge{display:inline-block;background:var(--or);color:white;font-size:9px;padding:1px 7px;border-radius:10px;margin-left:4px;font-family:'Black Han Sans',sans-serif;}
+.my-top-mng{display:flex;gap:6px;margin-top:8px;}
+.mtm-btn{display:flex;align-items:center;gap:3px;padding:5px 12px;border:1.5px solid var(--bd);border-radius:8px;background:var(--wh);font-size:11px;font-family:'Gowun Dodum',sans-serif;color:var(--gy);cursor:pointer;transition:all .15s;}
+.mtm-btn:hover{border-color:var(--or);color:var(--or);}
+.mtm-btn.del:hover{border-color:#E74C3C;color:#E74C3C;}
+.mtm-btn i{font-size:12px;}
+
 </style>
 
   <!-- PWA -->
@@ -1815,6 +1823,7 @@ const PLANS={
 /* ══ STATE ══ */
 let query='',myTops=[],recommended=[],cardIdx=0,dragging=false,sx=0,sy=0,cx=0,cy=0,curCard=null;
 let map=null,mapMarkers=[],currentPlan=null;
+var _editingTopId=null;
 let commTops=[...COMM_DATA],likedIds=new Set(),commSort='like',selEmoji='🍕',selDests=[];
 let trips=[],currentTripId=null,currentDayIdx=0,dragSrcIdx=null;
 let bgtPeople=2,bgtDays=5,bgtStyle='budget',catValues={food:3,activity:2,transport:1,shopping:1,misc:1};
@@ -1868,7 +1877,14 @@ function backFromCommTops(){
   if(_commTopsFrom==='search'){goSearch();}
   else{goCommHub();}
 }
-function goCreateTopping(){showScr('s-create-top');setNav('nb-comm');}
+function goCreateTopping(){
+  _editingTopId=null;
+  var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
+  document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
+  selEmoji='🍕';selDests=[];
+  if(typeof updPrev==='function')updPrev();
+  showScr('s-create-top');setNav('nb-comm');
+}
 function goMarket(){showScr('s-market');setNav('nb-comm');setMenuActive('msi-market');renderMarket();}
 function goCommHub(){
   showScr('s-comm');setNav('nb-comm');setMenuActive('mi-comm');
@@ -2416,7 +2432,7 @@ function renderCommFull(){
     const allComments=getComments(t.id);
     const commentToggle=`<div class="ftc-toggle-comment" onclick="toggleComments('${t.id}')"><i class="ti ti-message-circle"></i> 댓글 ${allComments.length}개${openComments.has(t.id)?' ▲ 접기':' ▼ 보기'}</div>`;
     return`<div class="ftc" id="fc-${t.id}">
-      <div class="ftc-row">${rnk}<div class="ftc-em">${t.emoji}</div><div class="ftc-info"><div class="ftc-name">${t.name}</div><div class="ftc-desc">${t.desc}</div><div class="ftc-author">by ${t.author} · ${timeAgo(t.ts)}</div></div>
+      <div class="ftc-row">${rnk}<div class="ftc-em">${t.emoji}</div><div class="ftc-info"><div class="ftc-name">${t.name}</div><div class="ftc-desc">${t.desc}</div><div class="ftc-author">by ${t.author} · ${timeAgo(t.ts)}${isMyTop(t)?` <span class="my-top-badge">내 토핑</span>`:''}</div>${isMyTop(t)?`<div class="my-top-mng"><button class="mtm-btn" onclick="editMyTop('${t.id}')"><i class="ti ti-pencil"></i> 수정</button><button class="mtm-btn del" onclick="delMyTop('${t.id}')"><i class="ti ti-trash"></i> 삭제</button></div>`:''}</div>
       <div class="ftc-acts"><button class="lk-btn${liked?' on':''}" onclick="toggleLike('${t.id}')"><i class="ti ti-heart"></i><span class="lk-cnt" id="lc-${t.id}">${t.likes}</span></button><button class="add-top-btn${added?' done':''}" onclick="toggleFT('${t.id}')">${added?'<i class="ti ti-check"></i> 추가됨':'<i class="ti ti-plus"></i> 추가'}</button></div></div>
       ${dTags?`<div style="margin-top:5px;">${dTags}</div>`:''}
       ${commentToggle}
@@ -2431,7 +2447,20 @@ function toggleFT(id){const t=commTops.find(x=>x.id===id);if(!t)return;const top
 function selEm(el,em){document.querySelectorAll('.em-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');selEmoji=em;updPrev();}
 function toggleDP(el){el.classList.toggle('sel');selDests=Array.from(document.querySelectorAll('.dp-opt.sel')).map(e=>e.textContent.replace(/^.\s/,''));}
 function updPrev(){const name=document.getElementById('cfName').value||'토핑 이름',desc=document.getElementById('cfDesc').value||'설명을 입력하세요';document.getElementById('prevEm').textContent=selEmoji;document.getElementById('prevName').textContent=name;document.getElementById('prevDesc').textContent=desc;document.getElementById('subBtn').disabled=!document.getElementById('cfName').value.trim()||!document.getElementById('cfDesc').value.trim();}
-function submitTop(){const name=document.getElementById('cfName').value.trim(),desc=document.getElementById('cfDesc').value.trim();if(!name||!desc)return;const nt={id:'u'+Date.now(),emoji:selEmoji,name,desc,author:currentUser?currentUser.name:'나',likes:0,dests:selDests,ts:Date.now()};commTops.unshift(nt);document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';document.querySelectorAll('.em-opt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.dp-opt').forEach(e=>e.classList.remove('sel'));selEmoji='🍕';selDests=[];updPrev();toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');setTimeout(()=>goCommToppings(),600);}
+function submitTop(){const name=document.getElementById('cfName').value.trim(),desc=document.getElementById('cfDesc').value.trim();if(!name||!desc)return;
+  // 수정 모드면 기존 토핑 업데이트
+  if(_editingTopId){
+    var ex=commTops.find(function(x){return x.id===_editingTopId;});
+    if(ex){ex.name=name;ex.desc=desc;ex.emoji=selEmoji;ex.dests=selDests;}
+    saveMyTops();
+    var _eid=_editingTopId;_editingTopId=null;
+    var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
+    document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
+    selEmoji='🍕';selDests=[];updPrev();
+    toast('✏️ 수정됐어요!');setTimeout(function(){goCommToppings();},600);
+    return;
+  }
+  const nt={id:'u'+Date.now(),emoji:selEmoji,name,desc,author:currentUser?currentUser.name:'나',likes:0,dests:selDests,ts:Date.now()};commTops.unshift(nt);saveMyTops();document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';document.querySelectorAll('.em-opt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.dp-opt').forEach(e=>e.classList.remove('sel'));selEmoji='🍕';selDests=[];updPrev();toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');setTimeout(()=>goCommToppings(),600);}
 document.getElementById('subBtn').disabled=true;
 
 /* ══ MARKET ══ */
@@ -2497,7 +2526,7 @@ function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;curren
 function editProfile(){if(!currentUser)return;const newName=prompt('새 닉네임',currentUser.name);if(!newName||newName.trim().length<2){toast('닉네임은 2자 이상이어야 해요');return;}currentUser.name=newName.trim();currentUser.avatar=newName.trim()[0].toUpperCase();saveUser(currentUser);closeProfile();renderUserBtn();renderMenuUser();toast('프로필 업데이트 완료!');}
 
 /* ══ INIT ══ */
-loadTD();loadUser();renderMainComm();checkSharedLink();loadCommentData();renderRecoTrips();
+loadTD();loadUser();loadMyTops();renderMainComm();checkSharedLink();loadCommentData();renderRecoTrips();
 
 /* ══ SHARE TRIP ══ */
 var _shareLink='';
@@ -3050,6 +3079,24 @@ function dismissInstall(){
 
 
 
+
+/* ══ 내가 만든 토핑 저장 ══ */
+function saveMyTops(){
+  try{
+    var mine=commTops.filter(function(t){return String(t.id).indexOf('u')===0;});
+    localStorage.setItem('tt_my_tops', JSON.stringify(mine));
+  }catch(e){}
+}
+function loadMyTops(){
+  try{
+    var saved=JSON.parse(localStorage.getItem('tt_my_tops')||'[]');
+    saved.forEach(function(t){
+      if(!commTops.some(function(x){return x.id===t.id;})){commTops.unshift(t);}
+    });
+  }catch(e){}
+}
+function isMyTop(t){ return t && String(t.id).indexOf('u')===0; }
+
 /* ══ 도시 좌표 테이블 (직접 만든 여행 핀 표시용) ══ */
 const CITY_COORDS={
   // 국내
@@ -3172,6 +3219,37 @@ function syncEndMin(){
     // 귀국일이 비었거나 출발일보다 빠르면 출발일로 맞춤
     if(!endEl.value||new Date(endEl.value)<new Date(s)){endEl.value=s;}
   }
+}
+
+
+/* ══ 내 토핑 관리 ══ */
+function delMyTop(id){
+  if(!confirm('이 토핑을 삭제할까요?'))return;
+  commTops=commTops.filter(function(t){return t.id!==id;});
+  // 내가 추가했던 myTops에서도 제거
+  myTops=myTops.filter(function(t){return getTopKey(t)!==id;});
+  saveMyTops();
+  renderCommFull();renderSelBar();
+  toast('삭제됐어요');
+}
+
+function editMyTop(id){
+  var t=commTops.find(function(x){return x.id===id;});
+  if(!t)return;
+  _editingTopId=id;
+  // 만들기 화면으로 이동 + 기존 값 채우기
+  document.getElementById('cfName').value=t.name;
+  document.getElementById('cfDesc').value=t.desc;
+  selEmoji=t.emoji;selDests=(t.dests||[]).slice();
+  // 이모지 선택 반영
+  document.querySelectorAll('.em-opt').forEach(function(e){e.classList.toggle('sel',e.textContent.trim()===t.emoji);});
+  document.querySelectorAll('.dp-opt').forEach(function(e){e.classList.toggle('sel',selDests.indexOf(e.textContent.trim())>=0);});
+  updPrev();
+  // 버튼 텍스트 변경
+  var btn=document.getElementById('subBtn');
+  if(btn){btn.innerHTML='<i class="ti ti-check"></i> 수정 완료';btn.disabled=false;}
+  showScr('s-create-top');setNav('nb-comm');
+  toast('✏️ 수정 모드');
 }
 
 </script>
