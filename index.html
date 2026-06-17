@@ -1693,6 +1693,41 @@ const SUPABASE_URL='https://slgnsxqxyglfvxwluodc.supabase.co';
 const SUPABASE_KEY='sb_publishable_Lal07BCr6cnsVVmTx2PR8w_CKcnKU0n';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+
+/* ══ 커뮤니티 피드 (공개 여행) ══ */
+var _publicTrips=[];  // DB에서 불러온 공개 여행
+
+async function loadPublicTrips(){
+  try{
+    // 공개 여행 + 작성자 프로필 조인
+    const {data,error}=await sb.from('trips')
+      .select('*, profiles(name, avatar)')
+      .eq('is_public',true)
+      .order('created_at',{ascending:false})
+      .limit(50);
+    if(error)throw error;
+    _publicTrips=(data||[]).map(function(r){
+      var t=dbToTrip(r);
+      t.author=(r.profiles&&r.profiles.name)?r.profiles.name:'여행자';
+      t.authorAv=(r.profiles&&r.profiles.avatar)?r.profiles.avatar:t.author[0];
+      t.authorId=r.user_id;
+      t.isMine=currentUser&&r.user_id===currentUser.id;
+      return t;
+    });
+    // 좋아요 수 불러오기
+    try{
+      const {data:likes}=await sb.from('trip_likes').select('trip_id');
+      var counts={};(likes||[]).forEach(function(l){counts[l.trip_id]=(counts[l.trip_id]||0)+1;});
+      _publicTrips.forEach(function(t){t.likes=counts[t.id]||0;});
+      // 내가 좋아요한 것 표시
+      if(currentUser){
+        const {data:myLikes}=await sb.from('trip_likes').select('trip_id').eq('user_id',currentUser.id);
+        (myLikes||[]).forEach(function(l){marketLikes[l.trip_id]=1;});
+      }
+    }catch(e){}
+  }catch(e){_publicTrips=[];console.error('공개여행 로드 실패',e);}
+}
+
 /* ══ SUPABASE 여행 데이터 ══ */
 // DB(snake) → 앱(camel) 변환
 function dbToTrip(r){
@@ -2457,7 +2492,7 @@ function renderTripList(){
 function quickTogglePub(id){const t=trips.find(x=>x.id===id);if(!t)return;t.isPublic=!t.isPublic;saveTD();renderTripList();toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
-function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
+function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();if(currentUser)sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id);document.getElementById('publicToggle').classList.toggle('on',t.isPublic);toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
 function delTrip(id){if(!confirm('정말 삭제할까요?'))return;delTripFromDB(id);trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
 function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim()&&document.getElementById('newStart').value&&document.getElementById('newEnd').value;document.getElementById('createBtn').disabled=!ok;}
@@ -2622,15 +2657,32 @@ document.getElementById('subBtn').disabled=true;
 function setMF(el){document.querySelectorAll('.mf-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');mfFilter=el.dataset.dest;renderMarket();}
 function toggleMarketLike(id,e){
   e.stopPropagation();
-  if(marketLikes[id]){delete marketLikes[id];}
-  else{marketLikes[id]=1;}
+  var nowLiked=!marketLikes[id];
+  if(nowLiked){marketLikes[id]=1;}else{delete marketLikes[id];}
   saveMarketLikes();
-  renderMarket();
-  toast(marketLikes[id]?'♥ 좋아요!':'좋아요 취소');
+  // 진짜 여행(UUID)이면 DB에 좋아요 저장
+  if(currentUser&&/^[0-9a-f]{8}-/.test(String(id))){
+    if(nowLiked){
+      sb.from('trip_likes').insert({trip_id:id,user_id:currentUser.id}).then(function(){}).catch(function(){});
+    }else{
+      sb.from('trip_likes').delete().eq('trip_id',id).eq('user_id',currentUser.id).then(function(){}).catch(function(){});
+    }
+  }
+  _renderMarketList();
+  toast(nowLiked?'♥ 좋아요!':'좋아요 취소');
 }
 function renderMarket(){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:fmtDuration(t.start,t.end),author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:t.originalAuthor||null,isMine:true,days:(t.days||[]).map(d=>({title:d.title}))}));
-  const all=[...MARKET_DATA,...publicTrips];
+  // DB에서 공개 여행 불러와서 렌더
+  loadPublicTrips().then(function(){
+    _renderMarketList();
+  });
+  // 우선 로딩 표시 또는 기존 데이터로
+  _renderMarketList();
+}
+function _renderMarketList(){
+  const publicTrips=_publicTrips.map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:fmtDuration(t.start,t.end),author:t.author,authorAv:t.authorAv,toppings:t.toppings||[],copiedCount:t.copiedCount||0,originalAuthor:null,isMine:t.isMine,authorId:t.authorId,days:(t.days||[]).map(d=>({title:d.title})),fullDays:t.days||[]}));
+  // 샘플 데이터는 공개여행이 적을 때만 섞어서 보여줌 (데모용)
+  const all=publicTrips.length>=3?publicTrips:[...publicTrips,...MARKET_DATA];
   const filtered=mfFilter==='전체'?all:all.filter(t=>t.dest&&t.dest.includes(mfFilter));
   document.getElementById('marketList').innerHTML=filtered.length?filtered.map(t=>{
     const liked=!!marketLikes[t.id];
@@ -2651,14 +2703,34 @@ function renderMarket(){
   }).join(''):'<div style="text-align:center;padding:32px 20px;color:var(--gy);font-size:13px;">해당 여행지의 공개 일정이 없어요<br><span style="font-size:11px;">내 여행을 공유해서 첫 번째가 되어보세요!</span></div>';
 }
 function copyTrip(id){
-  let src=MARKET_DATA.find(m=>m.id===id)||trips.find(t=>t.id===id);if(!src){toast('일정을 불러올 수 없어요');return;}
-  const newT={id:'copy_'+Date.now(),name:(src.name||'복사한 여행')+' (내 편집본)',dest:src.dest||'',companion:src.companion||'',start:'',end:'',toppings:src.toppings||[],isPublic:false,copiedCount:0,flights:[],hotels:[],originalAuthor:(src.author||src.originalAuthor||null),days:(src.days||[]).map(d=>{
-    var its=(d.items&&d.items.length)?d.items:(typeof genFeedItems==='function'?genFeedItems(d.title||'',src.dest||''):[{time:'오전 10시',name:d.title||'일정',desc:'편집해보세요'}]);
-    return{title:d.title,items:its.map(item=>({time:item.time||'',name:item.name||'',desc:item.desc||''}))};
-  })};
-  const orig=MARKET_DATA.find(m=>m.id===id);if(orig)orig.copiedCount=(orig.copiedCount||0)+1;
-  const origU=trips.find(t=>t.id===id);if(origU){origU.copiedCount=(origU.copiedCount||0)+1;}
-  trips.unshift(newT);saveTD();toast('🎉 "'+src.name+'" 내 여행으로 복사됐어요!');setTimeout(()=>openTrip(newT.id),600);
+  if(!currentUser){toast('복사하려면 로그인이 필요해요');openAuth();return;}
+  // 공개여행/샘플/내여행에서 원본 찾기
+  let src=_publicTrips.find(m=>m.id===id)||MARKET_DATA.find(m=>m.id===id)||trips.find(t=>t.id===id);
+  if(!src){toast('일정을 불러올 수 없어요');return;}
+  // 내 여행으로 복사
+  const newT={
+    name:(src.name||'복사한 여행')+' (내 편집본)',
+    dest:src.dest||'',companion:src.companion||'',start:'',end:'',
+    toppings:src.toppings||[],isPublic:false,copiedCount:0,
+    flights:[],hotels:[],
+    days:(src.fullDays||src.days||[]).map(function(d){return{title:d.title,items:(d.items||[]).map(function(it){return{time:it.time,name:it.name,desc:it.desc,lat:it.lat||null,lng:it.lng||null};})};})
+  };
+  toast('복사 중...');
+  saveTripToDB(newT).then(function(saved){
+    if(saved){
+      trips.unshift(saved);
+      // 원본의 copied_count 증가 (UUID인 진짜 여행만)
+      if(/^[0-9a-f]{8}-/.test(String(id))){
+        sb.rpc('increment_copy',{trip_id_param:id}).then(function(){}).catch(function(){
+          // RPC 없으면 무시
+        });
+      }
+      toast('🍕 내 보관함에 복사됐어요!');
+      goMyTrips();
+    }else{
+      toast('⚠️ 복사 실패');
+    }
+  });
 }
 
 /* ══ AUTH ══ */
