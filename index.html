@@ -1703,9 +1703,8 @@ async function loadPublicTrips(){
     const {data,error}=await sb.from('trips')
       .select('*')
       .eq('is_public',true)
-      .order('created_at',{ascending:false})
       .limit(50);
-    if(error)throw error;
+    if(error){console.error('[트립토핑] 쿼리 에러:',error.message,error.details,error.hint);throw error;}
     console.log('[트립토핑] 공개여행 불러옴:', (data||[]).length, '개');
     _publicTrips=(data||[]).map(function(r){
       var t=dbToTrip(r);
@@ -1738,7 +1737,7 @@ async function loadPublicTrips(){
         (myLikes||[]).forEach(function(l){marketLikes[l.trip_id]=1;});
       }
     }catch(e){}
-  }catch(e){_publicTrips=[];console.error('[트립토핑] 공개여행 로드 실패:',e);}
+  }catch(e){_publicTrips=[];console.error('[트립토핑] 공개여행 로드 실패:',e.message||e,'| 상세:',JSON.stringify(e));}
 }
 
 /* ══ SUPABASE 여행 데이터 ══ */
