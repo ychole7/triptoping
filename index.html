@@ -1010,6 +1010,8 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="트립토핑">
   <link rel="apple-touch-icon" href="/icon-192.png">
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -1685,6 +1687,12 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+
+/* ══ SUPABASE 연결 ══ */
+const SUPABASE_URL='https://slgnsxqxyglfvxwluodc.supabase.co';
+const SUPABASE_KEY='sb_publishable_Lal07BCr6cnsVVmTx2PR8w_CKcnKU0n';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
 
 /* ══ AI API ══ */
 function getApiKey(){ try{return localStorage.getItem('tt_api_key')||'';}catch(e){return'';} }
@@ -2571,7 +2579,14 @@ function copyTrip(id){
 
 /* ══ AUTH ══ */
 const USER_KEY='tt_user_v12';
-function loadUser(){try{const u=localStorage.getItem(USER_KEY);currentUser=u?JSON.parse(u):null;}catch(e){currentUser=null;}renderUserBtn();renderMenuUser();}
+function loadUser(){
+  // Supabase 세션 복원 (비동기)
+  syncAuthUser();
+  // 인증 상태 변화 감지
+  sb.auth.onAuthStateChange(function(event,session){
+    if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='TOKEN_REFRESHED'){syncAuthUser();}
+  });
+}
 function saveUser(u){currentUser=u;try{localStorage.setItem(USER_KEY,JSON.stringify(u));}catch(e){}}
 function renderUserBtn(){const btn=document.getElementById('hdrUserBtn');if(!btn)return;if(currentUser){btn.innerHTML=`<div class="user-chip"><div class="u-av">${currentUser.avatar||currentUser.name[0]}</div><div style="font-size:12px;">${currentUser.name}</div></div>`;}else{btn.innerHTML='<div class="login-chip"><i class="ti ti-login" style="font-size:14px;"></i> 로그인</div>';}}
 function handleUserBtn(){if(currentUser)openProfile();else openAuth();}
@@ -2580,13 +2595,58 @@ function openAuth(){authMode='login';switchAuthTab('login');document.getElementB
 function closeAuth(){document.getElementById('authOverlay').style.display='none';}
 function closeAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
 function switchAuthTab(mode){authMode=mode;const isL=mode==='login';document.getElementById('tabLogin').classList.toggle('on',isL);document.getElementById('tabSignup').classList.toggle('on',!isL);document.getElementById('fieldName').style.display=isL?'none':'block';document.getElementById('fieldPw2').style.display=isL?'none':'block';document.getElementById('forgotWrap').style.display=isL?'block':'none';document.getElementById('authBtnTxt').textContent=isL?'로그인':'회원가입';document.getElementById('authHeadline').textContent=isL?'다시 만나서 반가워요!':'트립토핑 여행 시작!';document.getElementById('authSubTxt').textContent=isL?'로그인하면 내 여행이 어디서든 저장돼요':'가입하면 여행 피드, 커뮤니티 모든 기능 이용!';}
-function handleAuth(){const email=document.getElementById('inputEmail').value.trim(),pw=document.getElementById('inputPw').value;let ok=true;if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){document.getElementById('inputEmail').classList.add('err');document.getElementById('errEmail').classList.add('show');ok=false;}if(pw.length<8){document.getElementById('inputPw').classList.add('err');document.getElementById('errPw').classList.add('show');ok=false;}if(authMode==='signup'){const name=document.getElementById('inputName').value.trim(),pw2=document.getElementById('inputPw2').value;if(name.length<2){document.getElementById('inputName').classList.add('err');document.getElementById('errName').classList.add('show');ok=false;}if(pw!==pw2){document.getElementById('inputPw2').classList.add('err');document.getElementById('errPw2').classList.add('show');ok=false;}if(!ok)return;const user={id:'u'+Date.now(),name,email,avatar:name[0].toUpperCase(),provider:'email'};saveUser(user);closeAuth();renderUserBtn();renderMenuUser();toast('🎉 환영해요, '+name+'님!');}else{if(!ok)return;const stored=JSON.parse(localStorage.getItem(USER_KEY)||'null');const name=stored&&stored.email===email?stored.name:email.split('@')[0];const user={id:stored?stored.id:'u'+Date.now(),name,email,avatar:name[0].toUpperCase(),provider:'email'};saveUser(user);closeAuth();renderUserBtn();renderMenuUser();toast('👋 어서오세요, '+name+'님!');}}
-function socialLogin(p){const icons={google:'🌐',kakao:'💬',apple:'🍎'},names={google:'Google',kakao:'카카오',apple:'Apple'},emails={google:'user@gmail.com',kakao:'user@kakao.com',apple:'user@icloud.com'};const user={id:'u'+Date.now(),name:names[p]+' 여행자',email:emails[p],avatar:icons[p],provider:p};saveUser(user);closeAuth();renderUserBtn();renderMenuUser();toast(icons[p]+' '+names[p]+' 로그인 완료!');}
+async function handleAuth(){
+  const email=document.getElementById('inputEmail').value.trim(),pw=document.getElementById('inputPw').value;
+  let ok=true;
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){document.getElementById('inputEmail').classList.add('err');document.getElementById('errEmail').classList.add('show');ok=false;}
+  if(pw.length<8){document.getElementById('inputPw').classList.add('err');document.getElementById('errPw').classList.add('show');ok=false;}
+  if(authMode==='signup'){
+    const name=document.getElementById('inputName').value.trim(),pw2=document.getElementById('inputPw2').value;
+    if(name.length<2){document.getElementById('inputName').classList.add('err');document.getElementById('errName').classList.add('show');ok=false;}
+    if(pw!==pw2){document.getElementById('inputPw2').classList.add('err');document.getElementById('errPw2').classList.add('show');ok=false;}
+    if(!ok)return;
+    // 진짜 회원가입
+    toast('가입 중...');
+    const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});
+    if(error){toast('⚠️ '+(error.message||'가입 실패'));return;}
+    closeAuth();
+    await syncAuthUser();
+    toast('🎉 환영해요, '+name+'님!');
+  }else{
+    if(!ok)return;
+    // 진짜 로그인
+    toast('로그인 중...');
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error){toast('⚠️ 이메일 또는 비밀번호를 확인해주세요');return;}
+    closeAuth();
+    await syncAuthUser();
+    toast('👋 어서오세요!');
+  }
+}
+
+// Supabase 세션 → currentUser 동기화
+async function syncAuthUser(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(user){
+    // 프로필 가져오기
+    let name=user.user_metadata&&user.user_metadata.name?user.user_metadata.name:user.email.split('@')[0];
+    let avatar=name[0].toUpperCase();
+    try{
+      const {data:prof}=await sb.from('profiles').select('name,avatar').eq('id',user.id).single();
+      if(prof){if(prof.name)name=prof.name;if(prof.avatar)avatar=prof.avatar;}
+    }catch(e){}
+    currentUser={id:user.id,name,email:user.email,avatar,provider:'email'};
+  }else{
+    currentUser=null;
+  }
+  renderUserBtn();renderMenuUser();
+}
+function socialLogin(p){toast('소셜 로그인은 준비 중이에요. 이메일로 가입해주세요!');}
 function openProfile(){if(!currentUser){openAuth();return;}document.getElementById('profileAvLg').textContent=currentUser.avatar||'😊';document.getElementById('profileNameLg').textContent=currentUser.name;document.getElementById('profileEmailLg').textContent=currentUser.email;document.getElementById('statTrips').textContent=trips.length;document.getElementById('statPublic').textContent=trips.filter(t=>t.isPublic).length;document.getElementById('statCopied').textContent=trips.reduce((a,t)=>a+(t.copiedCount||0),0);document.getElementById('profileOverlay').style.display='flex';}
 function closeProfile(){document.getElementById('profileOverlay').style.display='none';}
 function closeProfileBg(e){if(e.target===document.getElementById('profileOverlay'))closeProfile();}
-function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;currentUser=null;try{localStorage.removeItem(USER_KEY);}catch(e){}closeProfile();renderUserBtn();renderMenuUser();toast('또 만나요 🍕');}
-function editProfile(){if(!currentUser)return;const newName=prompt('새 닉네임',currentUser.name);if(!newName||newName.trim().length<2){toast('닉네임은 2자 이상이어야 해요');return;}currentUser.name=newName.trim();currentUser.avatar=newName.trim()[0].toUpperCase();saveUser(currentUser);closeProfile();renderUserBtn();renderMenuUser();toast('프로필 업데이트 완료!');}
+async function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;await sb.auth.signOut();currentUser=null;closeProfile();renderUserBtn();renderMenuUser();toast('또 만나요 🍕');}
+async function editProfile(){if(!currentUser)return;const newName=prompt('새 닉네임',currentUser.name);if(!newName||newName.trim().length<2){toast('닉네임은 2자 이상이어야 해요');return;}const nm=newName.trim();const av=nm[0].toUpperCase();currentUser.name=nm;currentUser.avatar=av;await sb.from('profiles').update({name:nm,avatar:av}).eq('id',currentUser.id);closeProfile();renderUserBtn();renderMenuUser();toast('프로필 업데이트 완료!');}
 
 /* ══ INIT ══ */
 loadTD();loadUser();loadMyTops();renderMainComm();checkSharedLink();loadCommentData();renderRecoTrips();
