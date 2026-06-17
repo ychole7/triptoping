@@ -1693,6 +1693,66 @@ const SUPABASE_URL='https://slgnsxqxyglfvxwluodc.supabase.co';
 const SUPABASE_KEY='sb_publishable_Lal07BCr6cnsVVmTx2PR8w_CKcnKU0n';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+/* ══ SUPABASE 여행 데이터 ══ */
+// DB(snake) → 앱(camel) 변환
+function dbToTrip(r){
+  return{
+    id:r.id, name:r.name, dest:r.dest,
+    start:r.start_date, end:r.end_date,
+    companion:r.companion,
+    toppings:r.toppings||[], days:r.days||[],
+    flights:r.flights||[], hotels:r.hotels||[],
+    isPublic:r.is_public, copiedCount:r.copied_count||0
+  };
+}
+// 앱(camel) → DB(snake) 변환
+function tripToDb(t){
+  return{
+    name:t.name, dest:t.dest||null,
+    start_date:t.start||null, end_date:t.end||null,
+    companion:t.companion||null,
+    toppings:t.toppings||[], days:t.days||[],
+    flights:t.flights||[], hotels:t.hotels||[],
+    is_public:!!t.isPublic, copied_count:t.copiedCount||0
+  };
+}
+
+// 내 여행 전체 불러오기 (로그인 시)
+async function loadTripsFromDB(){
+  if(!currentUser){trips=[];return;}
+  try{
+    const {data,error}=await sb.from('trips').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false});
+    if(error)throw error;
+    trips=(data||[]).map(dbToTrip);
+  }catch(e){trips=[];console.error('여행 로드 실패',e);}
+}
+
+// 여행 1개 저장 (신규=insert, 기존=update)
+async function saveTripToDB(t){
+  if(!currentUser)return null;
+  const row=tripToDb(t);
+  row.user_id=currentUser.id;
+  try{
+    // id가 UUID 형태면 update, 아니면 insert
+    var isUuid=/^[0-9a-f]{8}-/.test(String(t.id));
+    if(isUuid){
+      const {data,error}=await sb.from('trips').update(row).eq('id',t.id).select().single();
+      if(error)throw error;
+      return dbToTrip(data);
+    }else{
+      const {data,error}=await sb.from('trips').insert(row).select().single();
+      if(error)throw error;
+      return dbToTrip(data);
+    }
+  }catch(e){console.error('여행 저장 실패',e);toast('⚠️ 저장 실패');return null;}
+}
+
+// 여행 삭제
+async function delTripFromDB(id){
+  if(!currentUser)return;
+  try{ await sb.from('trips').delete().eq('id',id); }catch(e){console.error(e);}
+}
+
 
 /* ══ AI API ══ */
 function getApiKey(){ try{return localStorage.getItem('tt_api_key')||'';}catch(e){return'';} }
@@ -2330,6 +2390,7 @@ function focusPin(i){document.querySelectorAll('.tl-item').forEach((el,j)=>el.cl
 function resetAll(){myTops=[];query='';currentPlan=null;renderSelBar();renderTbar();}
 function savePlanToTrips(){
   if(!currentPlan){toast('저장할 플랜이 없어요');return;}
+  if(!currentUser){toast('💾 저장하려면 로그인이 필요해요');openAuth();return;}
   // 날짜 모달 표시
   const nameEl=document.getElementById('dateModalPlanName');
   if(nameEl) nameEl.textContent='"'+currentPlan.title+'" 날짜를 입력해주세요';
@@ -2344,8 +2405,27 @@ function savePlanToTrips(){
 
 /* ══ MY TRIPS ══ */
 const TRIPS_KEY='tt_trips_v12';
-function saveTD(){try{localStorage.setItem(TRIPS_KEY,JSON.stringify(trips));}catch(e){}}
-function loadTD(){try{const r=localStorage.getItem(TRIPS_KEY);trips=r?JSON.parse(r):[];}catch(e){trips=[];}if(!trips.length){trips=[{id:'s1',name:'나트랑 가족 여행',dest:'나트랑, 베트남',start:'2026-07-10',end:'2026-07-14',companion:'가족 4명',toppings:['액티비티','맛집 여행'],isPublic:false,copiedCount:0,flights:[{airline:'베트남항공',num:'VN423',from:'인천 ICN',to:'나트랑 CXR',date:'2026-07-10',time:'09:00 → 13:30'}],hotels:[{name:'빈펄 리조트',grade:'5성급',in:'2026-07-10',out:'2026-07-14',code:'BPR2026',price:'$180'}],days:[{title:'도착 & 첫 바다',items:[{time:'오후 2시',name:'나트랑 공항',desc:'픽업 후 체크인'},{time:'오후 4시',name:'나트랑 비치',desc:'첫 바다 산책'},{time:'저녁 6시',name:'루이지 레스토랑',desc:'씨푸드 디너'}]},{title:'빈펄 랜드',items:[{time:'오전 9시',name:'빈펄 랜드',desc:'워터파크·놀이기구'},{time:'오후 3시',name:'워터 슬라이드',desc:'아이와 물놀이'}]},{title:'호핑 투어',items:[{time:'오전 8시',name:'항구 출발',desc:'4개 섬 투어'},{time:'오후 4시',name:'머드 스파',desc:'힐링'}]}]},{id:'s2',name:'도쿄 커플 여행',dest:'도쿄, 일본',start:'2026-09-05',end:'2026-09-08',companion:'커플',toppings:['인스타 감성','맛집 여행'],isPublic:true,copiedCount:7,flights:[],hotels:[],days:[{title:'시부야',items:[{time:'오전 10시',name:'시부야 스크램블',desc:'도쿄 상징 교차로'}]},{title:'아사쿠사',items:[{time:'오전 9시',name:'센소지 절',desc:'도쿄 최고 명소'}]}]}];saveTD();}}
+var _saveDbTimer=null;
+function saveTD(){
+  // 로컬 백업
+  try{if(currentUser)localStorage.setItem(TRIPS_KEY+'_'+currentUser.id,JSON.stringify(trips));}catch(e){}
+  // 현재 편집 중인 여행을 DB에 저장 (디바운스)
+  if(currentUser&&currentTripId){
+    clearTimeout(_saveDbTimer);
+    _saveDbTimer=setTimeout(function(){
+      var t=trips.find(function(x){return x.id===currentTripId;});
+      if(t)saveTripToDB(t);
+    },800);
+  }
+}
+function loadTD(){
+  // 로그인 안 했으면 빈 목록 (로그인 필수)
+  if(!currentUser){trips=[];return;}
+  // 로그인했으면 DB에서 불러오기
+  loadTripsFromDB().then(function(){
+    if(typeof renderTripList==='function')renderTripList();
+  });
+}
 function renderTripList(){
   const wrap=document.getElementById('tripListWrap');
   if(!trips.length){wrap.innerHTML=`<div class="empty-bag">
@@ -2379,7 +2459,7 @@ function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.i
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
 function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
-function delTrip(id){if(!confirm('정말 삭제할까요?'))return;trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
+function delTrip(id){if(!confirm('정말 삭제할까요?'))return;delTripFromDB(id);trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
 function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim()&&document.getElementById('newStart').value&&document.getElementById('newEnd').value;document.getElementById('createBtn').disabled=!ok;}
 function createTrip(){const name=document.getElementById('newName').value.trim(),dest=document.getElementById('newDest').value.trim();var start=document.getElementById('newStart').value,end=document.getElementById('newEnd').value;const companion=document.getElementById('newCompanion').value.trim();
   // 날짜 검증: 귀국일이 출발일보다 빠르면 교환
@@ -2393,7 +2473,11 @@ function createTrip(){const name=document.getElementById('newName').value.trim()
   var firstItem={time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'};
   if(cc){firstItem.lat=cc[0];firstItem.lng=cc[1];}
   const nt={id:'t'+Date.now(),name,dest,start,end,companion,toppings:[],isPublic:false,copiedCount:0,flights:[],hotels:[],days:Array.from({length:n},(_,i)=>({title:`Day ${i+1}`,items:[i===0?firstItem:{time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'}]}))};
-  trips.unshift(nt);saveTD();toast('🍕 여행이 만들어졌어요!');openTrip(nt.id);}
+  if(!currentUser){toast('로그인이 필요해요');openAuth();return;}
+  saveTripToDB(nt).then(function(saved){
+    if(saved){nt.id=saved.id;trips.unshift(saved);}else{trips.unshift(nt);}
+    saveTD();toast('🍕 여행이 만들어졌어요!');openTrip(nt.id);
+  });}
 function toggleSec(s){document.getElementById(s+'-body').classList.toggle('open');document.getElementById(s+'-toggle').classList.toggle('open');}
 function renderFlights(){const t=getTrip();document.getElementById('flightList').innerHTML=(t&&t.flights||[]).map((f,i)=>`<div class="saved-i"><div class="saved-i-top"><div class="saved-i-label"><i class="ti ti-plane"></i> ${f.airline} ${f.num}</div><button class="saved-i-del" onclick="delFlight(${i})"><i class="ti ti-x"></i></button></div><div class="saved-i-grid"><div><div class="si-r">출발</div><div class="si-v">${f.from}</div></div><div><div class="si-r">도착</div><div class="si-v">${f.to}</div></div><div><div class="si-r">날짜</div><div class="si-v">${fmtDate(f.date)}</div></div><div><div class="si-r">시간</div><div class="si-v">${f.time}</div></div></div></div>`).join('');}
 function showFlightForm(){document.getElementById('flightForm').style.display='block';document.getElementById('addFlightBtn').style.display='none';}
@@ -2636,8 +2720,13 @@ async function syncAuthUser(){
       if(prof){if(prof.name)name=prof.name;if(prof.avatar)avatar=prof.avatar;}
     }catch(e){}
     currentUser={id:user.id,name,email:user.email,avatar,provider:'email'};
+    // 로그인되면 내 여행 불러오기
+    await loadTripsFromDB();
+    if(typeof renderTripList==='function')renderTripList();
+    if(typeof renderMyTravelMap==='function'){var mm=document.getElementById('myTravelMap');if(mm)renderMyTravelMap();}
   }else{
     currentUser=null;
+    trips=[];
   }
   renderUserBtn();renderMenuUser();
 }
@@ -2645,7 +2734,7 @@ function socialLogin(p){toast('소셜 로그인은 준비 중이에요. 이메�
 function openProfile(){if(!currentUser){openAuth();return;}document.getElementById('profileAvLg').textContent=currentUser.avatar||'😊';document.getElementById('profileNameLg').textContent=currentUser.name;document.getElementById('profileEmailLg').textContent=currentUser.email;document.getElementById('statTrips').textContent=trips.length;document.getElementById('statPublic').textContent=trips.filter(t=>t.isPublic).length;document.getElementById('statCopied').textContent=trips.reduce((a,t)=>a+(t.copiedCount||0),0);document.getElementById('profileOverlay').style.display='flex';}
 function closeProfile(){document.getElementById('profileOverlay').style.display='none';}
 function closeProfileBg(e){if(e.target===document.getElementById('profileOverlay'))closeProfile();}
-async function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;await sb.auth.signOut();currentUser=null;closeProfile();renderUserBtn();renderMenuUser();toast('또 만나요 🍕');}
+async function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;await sb.auth.signOut();currentUser=null;trips=[];closeProfile();renderUserBtn();renderMenuUser();if(typeof renderTripList==='function')renderTripList();toast('또 만나요 🍕');}
 async function editProfile(){if(!currentUser)return;const newName=prompt('새 닉네임',currentUser.name);if(!newName||newName.trim().length<2){toast('닉네임은 2자 이상이어야 해요');return;}const nm=newName.trim();const av=nm[0].toUpperCase();currentUser.name=nm;currentUser.avatar=av;await sb.from('profiles').update({name:nm,avatar:av}).eq('id',currentUser.id);closeProfile();renderUserBtn();renderMenuUser();toast('프로필 업데이트 완료!');}
 
 /* ══ INIT ══ */
@@ -2777,7 +2866,12 @@ function _doSavePlan(start,end){
     isPublic:false,copiedCount:0,flights:[],hotels:[],
     days:adjustDaysToTrip(currentPlan.days,start,end)
   };
-  trips.unshift(nt);saveTD();
+  if(currentUser){
+    saveTripToDB(nt).then(function(saved){
+      if(saved){nt.id=saved.id;trips.unshift(saved);}else{trips.unshift(nt);}
+      saveTD();_savedTripId=nt.id;
+    });
+  }else{trips.unshift(nt);saveTD();}
   _savedTripId=nt.id;
   const banner=document.getElementById('saveBanner');
   const sub=document.getElementById('saveBannerSub');
