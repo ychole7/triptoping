@@ -2501,10 +2501,21 @@ function renderTripList(){
     </div>
   </div>`).join('');
 }
-function quickTogglePub(id){const t=trips.find(x=>x.id===id);if(!t)return;t.isPublic=!t.isPublic;saveTD();renderTripList();toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
+async function quickTogglePub(id){
+  const t=trips.find(x=>x.id===id);if(!t)return;
+  t.isPublic=!t.isPublic;
+  saveTD();renderTripList();
+  // DB 업데이트
+  if(currentUser){
+    const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',id).select();
+    if(error){console.error('[트립토핑] 공개 토글 실패:',error.message,error);toast('⚠️ 공개 설정 저장 실패');}
+    else{console.log('[트립토핑] 공개 토글 성공:',id,'→',t.isPublic,data);}
+  }
+  toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
+}
 function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
-function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();if(currentUser)sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id);document.getElementById('publicToggle').classList.toggle('on',t.isPublic);toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
+async function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);if(currentUser){const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id).select();if(error){console.error('[트립토핑] 공개 토글 실패:',error.message);}else{console.log('[트립토핑] 공개 토글:',t.id,'→',t.isPublic);}}toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
 function delTrip(id){if(!confirm('정말 삭제할까요?'))return;delTripFromDB(id);trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
 function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim()&&document.getElementById('newStart').value&&document.getElementById('newEnd').value;document.getElementById('createBtn').disabled=!ok;}
