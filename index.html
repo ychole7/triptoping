@@ -1022,6 +1022,20 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .rv-review-input:focus{border-color:var(--or);}
 .rv-hint{font-size:11px;color:var(--gy);margin-top:8px;line-height:1.6;}
 
+
+.trip-review-row{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap;}
+.trip-visited{font-size:11px;background:#EAF7F4;color:#00A88E;padding:2px 9px;border-radius:10px;font-weight:600;}
+.trip-stars{font-size:13px;color:#FFB800;letter-spacing:1px;}
+.trip-has-review{font-size:11px;color:var(--gy);background:#F5F3EF;padding:2px 9px;border-radius:10px;}
+
+
+.fd-review-card{background:linear-gradient(135deg,#FFF8F0,#FFF0E8);border:1.5px solid #FFE0CC;border-radius:14px;padding:14px;margin-bottom:18px;}
+.fd-review-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.fd-review-visited{font-size:12px;background:#EAF7F4;color:#00A88E;padding:3px 11px;border-radius:10px;font-weight:700;}
+.fd-review-stars{font-size:16px;color:#FFB800;letter-spacing:2px;}
+.fd-review-txt{font-size:13px;color:var(--dk);line-height:1.7;font-style:italic;margin-bottom:8px;}
+.fd-review-by{font-size:11px;color:var(--gy);text-align:right;}
+
 </style>
 
   <!-- PWA -->
@@ -1663,6 +1677,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     </div>
   </div>
   <div class="feed-detail-body">
+    <div id="fdReviewBox" style="display:none;"></div>
     <div class="fd-section-ttl">🍕 적용된 토핑</div>
     <div class="fd-tops" id="fdTops"></div>
     <div class="fd-section-ttl">🗓 전체 일정</div>
@@ -2654,6 +2669,7 @@ function renderTripList(){
     <div class="trip-name">✈️ ${t.name}${t.isPublic?'<span class="pub-badge">공개중</span>':''}</div>
     <div class="trip-info"><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest} · <i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)===fmtDate(t.end)?fmtDate(t.start)+' · 당일':fmtDate(t.start)+' ~ '+fmtDate(t.end)} · ${t.companion||''}</div>
     <div class="trip-tops">${(t.toppings||[]).map(tp=>`<span class="trip-tb">🍕 ${tp}</span>`).join('')}</div>
+    ${(t.visited||t.rating)?`<div class="trip-review-row">${t.visited?'<span class="trip-visited">✈️ 다녀옴</span>':''}${t.rating?`<span class="trip-stars">${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</span>`:''}${t.review?`<span class="trip-has-review">📝 후기</span>`:''}</div>`:''}
     ${t.isPublic?`<div class="trip-copy-cnt"><i class="ti ti-copy"></i> ${t.copiedCount||0}명이 복사했어요</div>`:''}
     <div class="trip-acts" onclick="event.stopPropagation()">
       <button class="t-btn pri" onclick="openTrip('${t.id}')"><i class="ti ti-edit"></i> 편집</button>
@@ -3373,7 +3389,7 @@ function openFeedDetail(id){
   var pub=_publicTrips.find(function(x){return x.id===id;});
   var t;
   if(pub){
-    t={id:pub.id,name:pub.name,dest:pub.dest,companion:pub.companion||'',duration:fmtDuration(pub.start,pub.end),author:pub.author,authorAv:pub.authorAv,toppings:pub.toppings||[],copiedCount:pub.copiedCount||0,likes:pub.likes||0,isMine:pub.isMine,days:(pub.days||[])};
+    t={id:pub.id,name:pub.name,dest:pub.dest,companion:pub.companion||'',duration:fmtDuration(pub.start,pub.end),author:pub.author,authorAv:pub.authorAv,toppings:pub.toppings||[],copiedCount:pub.copiedCount||0,likes:pub.likes||0,isMine:pub.isMine,days:(pub.days||[]),rating:pub.rating||0,review:pub.review||'',visited:pub.visited};
   }else{
     t=MARKET_DATA.find(function(x){return x.id===id;});
   }
@@ -3384,6 +3400,19 @@ function openFeedDetail(id){
   document.getElementById('fdAuthorAv').textContent=t.authorAv;
   document.getElementById('fdAuthorName').textContent=t.author;
   document.getElementById('fdAuthorSub').textContent=t.originalAuthor?('🔗 '+t.originalAuthor+'님 일정에서 가져옴'):'✈️ 여행자';
+  // 작성자 후기 표시
+  var rvBox=document.getElementById('fdReviewBox');
+  if(rvBox){
+    if(t.visited||t.rating||t.review){
+      rvBox.style.display='block';
+      rvBox.innerHTML='<div class="fd-review-card">'
+        +'<div class="fd-review-hdr">'+(t.visited?'<span class="fd-review-visited">✈️ 다녀온 여행</span>':'')
+        +(t.rating?'<span class="fd-review-stars">'+'★'.repeat(t.rating)+'☆'.repeat(5-t.rating)+'</span>':'')+'</div>'
+        +(t.review?'<div class="fd-review-txt">"'+t.review.replace(/</g,'&lt;')+'"</div>':'')
+        +'<div class="fd-review-by">— '+t.author+'님의 여행 후기</div>'
+        +'</div>';
+    }else{rvBox.style.display='none';}
+  }
   document.getElementById('fdTops').innerHTML=(t.toppings||[]).map(tp=>`<span class="fd-top-badge">🍕 ${tp}</span>`).join('');
   // 일정
   document.getElementById('fdDays').innerHTML=(t.days||[]).map((d,i)=>{
