@@ -1785,6 +1785,7 @@ function dbToTrip(r){
     companion:r.companion,
     toppings:r.toppings||[], days:r.days||[],
     flights:r.flights||[], hotels:r.hotels||[],
+    checklist:r.checklist||[],
     isPublic:r.is_public, copiedCount:r.copied_count||0
   };
 }
@@ -1796,6 +1797,7 @@ function tripToDb(t){
     companion:t.companion||null,
     toppings:t.toppings||[], days:t.days||[],
     flights:t.flights||[], hotels:t.hotels||[],
+    checklist:t.checklist||[],
     is_public:!!t.isPublic, copied_count:t.copiedCount||0
   };
 }
