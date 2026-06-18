@@ -1093,7 +1093,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       </div>
     </div>
     <div class="menu-footer">
-      <div class="mf-item" onclick="openApiKeyModal();closeMenu()"><i class="ti ti-settings"></i> AI 설정</div>
+      
       <div class="mf-item" onclick="toast('고객센터 (준비 중)')"><i class="ti ti-help-circle"></i> 고객센터</div>
     </div>
   </div>
@@ -1650,8 +1650,8 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <button class="auth-close" onclick="closeAuth()"><i class="ti ti-x"></i></button>
     <div class="auth-logo-wrap">
       <div class="auth-logo">🍕 트립토핑<span class="auth-logo-dot">·</span></div>
-      <div class="auth-headline" id="authHeadline">여행을 저장하고 공유해요</div>
-      <div class="auth-sub" id="authSubTxt">로그인하면 내 여행이 어디서든 저장돼요</div>
+      <div class="auth-headline" id="authHeadline">🍕 내 여행, 어디서든</div>
+      <div class="auth-sub" id="authSubTxt">로그인하면 만든 여행이 안전하게 저장되고<br>친구들과 공유하거나 다른 여행도 담을 수 있어요</div>
     </div>
     <div class="auth-tabs-row">
       <div class="auth-tab on" id="tabLogin" onclick="switchAuthTab('login')">로그인</div>
@@ -1664,12 +1664,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <div class="auth-field" id="fieldPw2" style="display:none;"><div class="auth-label"><i class="ti ti-lock-check"></i> 비밀번호 확인</div><input class="auth-inp" id="inputPw2" type="password" placeholder="비밀번호 다시 입력"/><div class="auth-err-msg" id="errPw2">비밀번호가 일치하지 않아요</div></div>
       <div id="forgotWrap" style="text-align:right;margin:-4px 0 8px;"><span style="font-size:11px;color:var(--or);cursor:pointer;" onclick="toast('이메일로 재설정 링크를 보내드려요')">비밀번호를 잊으셨나요?</span></div>
       <button class="auth-main-btn" onclick="handleAuth()"><i class="ti ti-login"></i> <span id="authBtnTxt">로그인</span></button>
-      <div class="auth-divider"><div class="auth-div-line"></div><div class="auth-div-txt">또는</div><div class="auth-div-line"></div></div>
-      <div class="social-btns">
-        <button class="social-btn" onclick="socialLogin('google')">🌐 Google로 계속하기</button>
-        <button class="social-btn kakao" onclick="socialLogin('kakao')">💬 카카오로 계속하기</button>
-        <button class="social-btn apple" onclick="socialLogin('apple')">🍎 Apple로 계속하기</button>
-      </div>
+      
       <div style="font-size:10px;color:#BBB;text-align:center;margin-top:12px;">가입하면 서비스 이용약관 및 개인정보처리방침에 동의한 것으로 간주해요</div>
     </div>
   </div>
@@ -2823,7 +2818,7 @@ function renderMenuUser(){const area=document.getElementById('menuUserArea');if(
 function openAuth(){authMode='login';switchAuthTab('login');document.getElementById('authOverlay').style.display='flex';}
 function closeAuth(){document.getElementById('authOverlay').style.display='none';}
 function closeAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
-function switchAuthTab(mode){authMode=mode;const isL=mode==='login';document.getElementById('tabLogin').classList.toggle('on',isL);document.getElementById('tabSignup').classList.toggle('on',!isL);document.getElementById('fieldName').style.display=isL?'none':'block';document.getElementById('fieldPw2').style.display=isL?'none':'block';document.getElementById('forgotWrap').style.display=isL?'block':'none';document.getElementById('authBtnTxt').textContent=isL?'로그인':'회원가입';document.getElementById('authHeadline').textContent=isL?'다시 만나서 반가워요!':'트립토핑 여행 시작!';document.getElementById('authSubTxt').textContent=isL?'로그인하면 내 여행이 어디서든 저장돼요':'가입하면 여행 피드, 커뮤니티 모든 기능 이용!';}
+function switchAuthTab(mode){authMode=mode;const isL=mode==='login';document.getElementById('tabLogin').classList.toggle('on',isL);document.getElementById('tabSignup').classList.toggle('on',!isL);document.getElementById('fieldName').style.display=isL?'none':'block';document.getElementById('fieldPw2').style.display=isL?'none':'block';document.getElementById('forgotWrap').style.display=isL?'block':'none';document.getElementById('authBtnTxt').textContent=isL?'로그인':'회원가입';document.getElementById('authHeadline').innerHTML=isL?'👋 다시 만나서 반가워요!':'🍕 트립토핑 시작하기';document.getElementById('authSubTxt').innerHTML=isL?'로그인하고 내 여행을 이어가세요':'가입하면 여행 저장·공유·커뮤니티<br>모든 기능을 무료로 쓸 수 있어요';}
 async function handleAuth(){
   const email=document.getElementById('inputEmail').value.trim(),pw=document.getElementById('inputPw').value;
   let ok=true;
@@ -2875,7 +2870,7 @@ async function syncAuthUser(){
   }
   renderUserBtn();renderMenuUser();
 }
-function socialLogin(p){toast('소셜 로그인은 준비 중이에요. 이메일로 가입해주세요!');}
+
 function openProfile(){if(!currentUser){openAuth();return;}document.getElementById('profileAvLg').textContent=currentUser.avatar||'😊';document.getElementById('profileNameLg').textContent=currentUser.name;document.getElementById('profileEmailLg').textContent=currentUser.email;document.getElementById('statTrips').textContent=trips.length;document.getElementById('statPublic').textContent=trips.filter(t=>t.isPublic).length;document.getElementById('statCopied').textContent=trips.reduce((a,t)=>a+(t.copiedCount||0),0);document.getElementById('profileOverlay').style.display='flex';}
 function closeProfile(){document.getElementById('profileOverlay').style.display='none';}
 function closeProfileBg(e){if(e.target===document.getElementById('profileOverlay'))closeProfile();}
