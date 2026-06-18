@@ -1485,19 +1485,6 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       </div>
     </div>
   </div>
-  <!-- 여행 사진 앨범 -->
-  <div class="info-sec">
-    <div class="info-sec-hdr" onclick="toggleSec('ph')">
-      <div class="info-sec-ttl"><i class="ti ti-photo"></i> 여행 사진 <span id="phCount" style="font-size:11px;color:var(--gy);font-weight:400;"></span></div>
-      <i class="ti ti-chevron-down info-toggle" id="ph-toggle"></i>
-    </div>
-    <div class="info-body" id="ph-body">
-      <div class="ph-grid" id="phGrid"></div>
-      <input type="file" id="phFileInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoUpload(event)"/>
-      <button class="ph-add-btn" id="phAddBtn" onclick="document.getElementById('phFileInput').click()"><i class="ti ti-camera-plus"></i> 사진 추가</button>
-      <div class="rv-hint">📷 여행당 최대 10장 · 자동 압축돼서 가볍게 저장돼요</div>
-    </div>
-  </div>
   <div class="day-label-sec"><i class="ti ti-calendar"></i> 일정 편집</div>
   <div class="day-tab-row" id="dayTabRow"></div>
   <div class="day-edit-body" id="dayEditBody"></div>
@@ -1539,6 +1526,13 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <div class="rv-rating-label">여행은 어땠나요?</div>
       <textarea class="rv-review-input" id="rvReviewInput" placeholder="기억하고 싶은 순간, 추천 팁, 아쉬웠던 점 등을 자유롭게 남겨보세요" maxlength="500" style="margin-top:10px;"></textarea>
       <div class="rv-hint">💡 공개 여행이면 다른 여행자들도 이 후기를 볼 수 있어요</div>
+    </div>
+    <div class="rv-card">
+      <div class="rv-rating-label">📷 여행 사진 <span id="phCount" style="font-size:11px;color:var(--gy);font-weight:400;"></span></div>
+      <div class="ph-grid" id="phGrid" style="margin-top:12px;"></div>
+      <input type="file" id="phFileInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoUpload(event)"/>
+      <button class="ph-add-btn" id="phAddBtn" onclick="document.getElementById('phFileInput').click()" style="margin-top:10px;"><i class="ti ti-camera-plus"></i> 사진 추가</button>
+      <div class="rv-hint">여행당 최대 10장 · 자동 압축돼서 가볍게 저장돼요</div>
     </div>
     <button class="rv-save-btn" onclick="saveReviewAndExit()"><i class="ti ti-check"></i> 저장하기</button>
   </div>
@@ -2812,7 +2806,7 @@ async function quickTogglePub(id){
   }
   toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
 }
-function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();renderPhotos();setNav('nb-my');}
+function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
 async function togglePublic(){
   const t=getTrip();if(!t)return;
@@ -4042,11 +4036,12 @@ function delFeedComment(commentId){
 var _reviewTripId=null;
 function openReview(id){
   _reviewTripId=id;
+  currentTripId=id;
   var t=trips.find(function(x){return x.id===id;});
   if(!t)return;
   document.getElementById('rvTripName').textContent='"'+t.name+'"';
   showScr('s-review');setNav('nb-my');
-  renderReview();
+  renderReview();renderPhotos();
 }
 function getReviewTrip(){ return trips.find(function(x){return x.id===_reviewTripId;}); }
 function renderReview(){
