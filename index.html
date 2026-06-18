@@ -159,14 +159,14 @@ body{font-family:'Gowun Dodum',sans-serif;color:var(--dk);background:#ECEAE6;dis
 .sec-ttl i{color:var(--or);font-size:16px;}
 .sec-more{font-size:11px;color:var(--or);cursor:pointer;display:flex;align-items:center;gap:2px;font-weight:600;transition:opacity .15s;}
 .sec-more:hover{opacity:.7;}
-.ex-row{padding:0 16px 4px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;}
+.ex-row{padding:8px 16px 10px;display:flex;gap:7px;overflow-x:auto;overflow-y:visible;scrollbar-width:none;}
 .ex-row::-webkit-scrollbar{display:none;}
 .ex-q{background:var(--wh);border:1.5px solid var(--bd);border-radius:20px;padding:7px 13px;font-size:11px;white-space:nowrap;cursor:pointer;color:var(--dk);flex-shrink:0;transition:all .2s;box-shadow:var(--shadow-sm);font-weight:500;}
 .ex-q:hover{border-color:var(--or);color:var(--or);background:#FFF8F5;transform:translateY(-1px);box-shadow:var(--shadow-md);}
-.top-scroll{padding:0 16px 14px;display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;}
+.top-scroll{padding:8px 16px 16px;display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;}
 .top-scroll::-webkit-scrollbar{display:none;}
 .top-card{flex-shrink:0;width:128px;background:var(--wh);border:1.5px solid var(--bd);border-radius:var(--radius-md);padding:13px 11px;transition:all .22s;box-shadow:var(--shadow-sm);}
-.top-card:hover{border-color:rgba(255,95,31,.3);transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.top-card:hover{border-color:rgba(255,95,31,.3);transform:translateY(-1px);box-shadow:var(--shadow-md);}
 .top-card.added{border-color:var(--or);background:linear-gradient(135deg,#FFF8F5,#FFF0E8);box-shadow:var(--shadow-or);}
 .tc-em{font-size:30px;margin-bottom:6px;}
 .tc-nm{font-family:'Black Han Sans',sans-serif;font-size:12px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;}
@@ -942,7 +942,7 @@ html{scroll-behavior:smooth;}
 
 
 /* ── SEARCH POPULAR TOPPINGS ── */
-.pop-top-scroll{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;}
+.pop-top-scroll{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 0 12px;}
 .pop-top-scroll::-webkit-scrollbar{display:none;}
 .ptt-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:22px;border:1.5px solid var(--bd);background:var(--wh);cursor:pointer;transition:all .18s;box-shadow:var(--shadow-sm);white-space:nowrap;}
 .ptt-chip:active{transform:scale(.94);}
