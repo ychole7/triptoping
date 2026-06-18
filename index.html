@@ -3169,9 +3169,14 @@ function genFeedItems(dayTitle,dest){
 }
 
 function openFeedDetail(id){
-  const publicTrips=trips.filter(t=>t.isPublic).map(t=>({id:t.id,name:t.name,dest:t.dest,companion:t.companion||'',duration:fmtDuration(t.start,t.end),author:currentUser?currentUser.name:'나',authorAv:currentUser?currentUser.avatar:'나',toppings:t.toppings||[],copiedCount:t.copiedCount||0,likes:0,isMine:true,days:(t.days||[])}));
-  const all=[...MARKET_DATA,...publicTrips];
-  const t=all.find(x=>x.id===id);
+  // DB 공개 여행 우선, 없으면 샘플
+  var pub=_publicTrips.find(function(x){return x.id===id;});
+  var t;
+  if(pub){
+    t={id:pub.id,name:pub.name,dest:pub.dest,companion:pub.companion||'',duration:fmtDuration(pub.start,pub.end),author:pub.author,authorAv:pub.authorAv,toppings:pub.toppings||[],copiedCount:pub.copiedCount||0,likes:pub.likes||0,isMine:pub.isMine,days:(pub.days||[])};
+  }else{
+    t=MARKET_DATA.find(function(x){return x.id===id;});
+  }
   if(!t)return;
   _currentFeed=t;
   document.getElementById('fdTitle').textContent=t.name;
