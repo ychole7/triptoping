@@ -1001,6 +1001,11 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .tl-nav:active{transform:scale(.9);}
 .tl-nav i{font-size:16px;}
 
+
+.ftc-mine-tag{display:inline-block;background:var(--or);color:white;font-size:8px;padding:1px 5px;border-radius:8px;vertical-align:middle;}
+.ftc-del-cmt{color:#E74C3C;cursor:pointer;font-weight:600;}
+.ftc-del-cmt:hover{text-decoration:underline;}
+
 </style>
 
   <!-- PWA -->
@@ -3270,7 +3275,10 @@ function renderFeedComments(){
     wrap.innerHTML='<div style="text-align:center;padding:16px;color:var(--gy);font-size:12px;">첫 댓글을 남겨보세요!</div>';
     return;
   }
-  wrap.innerHTML='<div class="ftc-comment-list">'+list.map(c=>`<div class="ftc-comment"><div class="ftc-comment-av">${c.av}</div><div class="ftc-comment-body"><div class="ftc-comment-author">${c.author}</div><div class="ftc-comment-txt">${c.txt}</div><div class="ftc-comment-time">${timeAgo(c.ts)}</div></div></div>`).join('')+'</div>';
+  wrap.innerHTML='<div class="ftc-comment-list">'+list.map(c=>{
+    const isMine=currentUser&&c.userId&&c.userId===currentUser.id;
+    return`<div class="ftc-comment"><div class="ftc-comment-av">${c.av}</div><div class="ftc-comment-body"><div class="ftc-comment-author">${c.author}${isMine?' <span class="ftc-mine-tag">나</span>':''}</div><div class="ftc-comment-txt">${c.txt}</div><div class="ftc-comment-time">${timeAgo(c.ts)}${isMine?` · <span class="ftc-del-cmt" onclick="delFeedComment('${c.id}')">삭제</span>`:''}</div></div></div>`;
+  }).join('')+'</div>';
 }
 
 function submitFeedComment(){
@@ -3668,6 +3676,34 @@ function openInMaps(name, lat, lng){
     url='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(name);
   }
   window.open(url,'_blank');
+}
+
+
+// 피드 댓글 삭제 (내 댓글만)
+function delFeedComment(commentId){
+  if(!confirm('이 댓글을 삭제할까요?'))return;
+  const tripId=_currentFeed?_currentFeed.id:null;
+  if(!tripId)return;
+  // DB 댓글이면 DB에서 삭제
+  if(/^[0-9a-f]{8}-/.test(String(tripId))){
+    deleteComment(commentId).then(function(){
+      // 캐시에서 제거
+      if(_feedCommentsCache[tripId]){
+        _feedCommentsCache[tripId]=_feedCommentsCache[tripId].filter(function(c){return c.id!==commentId;});
+      }
+      renderFeedComments();
+      toast('댓글이 삭제됐어요');
+    });
+  }else{
+    // 로컬 샘플 댓글
+    const key='feed_'+tripId;
+    if(userComments[key]){
+      userComments[key]=userComments[key].filter(function(c){return c.id!==commentId;});
+      saveCommentData();
+    }
+    renderFeedComments();
+    toast('댓글이 삭제됐어요');
+  }
 }
 
 </script>
