@@ -2889,16 +2889,32 @@ loadTD();loadUser();loadMyTops();renderMainComm();checkSharedLink();loadCommentD
 var _shareLink='';
 var _sharedData=null;
 
-function shareTrip(id){
+async function shareTrip(id){
   var t=trips.find(function(x){return x.id===id;});
   if(!t){toast('여행을 찾을 수 없어요');return;}
-  var data={n:t.name,dest:t.dest,start:t.start,end:t.end,companion:t.companion,toppings:t.toppings||[],days:(t.days||[]).map(function(d){return{title:d.title,items:(d.items||[]).map(function(i){return{time:i.time,name:i.name,desc:i.desc};})};})};
-  var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  var link=location.href.split('#')[0]+'#share='+encoded;
-  _shareLink=link;
-  document.getElementById('shareLinkTxt').textContent=link.length>60?link.substring(0,60)+'...':link;
-  document.getElementById('shareTripName').textContent='"'+t.name+'" 링크를 복사해서 공유해보세요';
-  document.getElementById('shareOverlay').style.display='flex';
+  // 진짜 여행(UUID)이면 DB 공개 후 짧은 링크
+  if(currentUser&&/^[0-9a-f]{8}-/.test(String(id))){
+    // 공유하려면 공개 상태여야 함
+    if(!t.isPublic){
+      t.isPublic=true;
+      await sb.from('trips').update({is_public:true}).eq('id',id);
+      if(typeof renderTripList==='function')renderTripList();
+    }
+    var link=location.origin+location.pathname+'?t='+id;
+    _shareLink=link;
+    document.getElementById('shareLinkTxt').textContent=link;
+    document.getElementById('shareTripName').textContent='"'+t.name+'" 링크를 복사해서 공유해보세요';
+    document.getElementById('shareOverlay').style.display='flex';
+  }else{
+    // 로그인 안 했거나 샘플 → 기존 base64 방식 (폴백)
+    var data={n:t.name,dest:t.dest,start:t.start,end:t.end,companion:t.companion,toppings:t.toppings||[],days:(t.days||[]).map(function(d){return{title:d.title,items:(d.items||[]).map(function(i){return{time:i.time,name:i.name,desc:i.desc};})};})};
+    var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    var link=location.href.split('#')[0]+'#share='+encoded;
+    _shareLink=link;
+    document.getElementById('shareLinkTxt').textContent=link.length>60?link.substring(0,60)+'...':link;
+    document.getElementById('shareTripName').textContent='"'+t.name+'" 링크를 복사해서 공유해보세요 (로그인하면 더 짧은 링크!)';
+    document.getElementById('shareOverlay').style.display='flex';
+  }
 }
 function closeShareModal(e){
   if(e&&e.target!==document.getElementById('shareOverlay'))return;
@@ -2911,7 +2927,24 @@ function copyShareLink(){
   document.getElementById('shareOverlay').style.display='none';
 }
 function shareKakao(){copyShareLink();toast('💬 링크 복사! 카카오에 붙여넣기 하세요');}
-function checkSharedLink(){
+async function checkSharedLink(){
+  // 1. 새 방식: ?t=UUID (DB에서 불러오기)
+  try{
+    var params=new URLSearchParams(location.search);
+    var tid=params.get('t');
+    if(tid&&/^[0-9a-f]{8}-/.test(tid)){
+      const {data,error}=await sb.from('trips').select('*').eq('id',tid).eq('is_public',true).single();
+      if(!error&&data){
+        var t=dbToTrip(data);
+        _sharedData={n:t.name,dest:t.dest,start:t.start,end:t.end,companion:t.companion,toppings:t.toppings||[],days:t.days||[],_tripId:t.id};
+        document.getElementById('sharedBannerTtl').textContent='✈️ '+t.name;
+        document.getElementById('sharedBanner').classList.add('show');
+        history.replaceState(null,'',location.origin+location.pathname);
+        return;
+      }
+    }
+  }catch(e){}
+  // 2. 기존 방식: #share=base64 (폴백)
   try{
     var hash=location.hash;
     if(!hash||hash.indexOf('#share=')!==0)return;
@@ -2926,11 +2959,18 @@ function checkSharedLink(){
 }
 function takeSharedTrip(){
   if(!_sharedData)return;
-  var nt={id:'copy_'+Date.now(),name:_sharedData.n+' (공유받은 여행)',dest:_sharedData.dest||'',start:_sharedData.start||'',end:_sharedData.end||'',companion:_sharedData.companion||'',toppings:_sharedData.toppings||[],isPublic:false,copiedCount:0,originalAuthor:(_sharedData.author||'공유받음'),flights:[],hotels:[],days:_sharedData.days||[]};
-  trips.unshift(nt);saveTD();
-  document.getElementById('sharedBanner').classList.remove('show');
-  toast('🎉 내 여행 보관함에 저장됐어요!');
-  setTimeout(function(){goMyTrips();},600);
+  if(!currentUser){toast('내 여행으로 담으려면 로그인이 필요해요');openAuth();return;}
+  var nt={name:_sharedData.n+' (공유받은 여행)',dest:_sharedData.dest||'',start:_sharedData.start||'',end:_sharedData.end||'',companion:_sharedData.companion||'',toppings:_sharedData.toppings||[],isPublic:false,copiedCount:0,flights:[],hotels:[],checklist:[],days:_sharedData.days||[]};
+  toast('담는 중...');
+  saveTripToDB(nt).then(function(saved){
+    if(saved){
+      trips.unshift(saved);
+      document.getElementById('sharedBanner').classList.remove('show');
+      _sharedData=null;
+      toast('🍕 내 보관함에 담았어요!');
+      goMyTrips();
+    }else{toast('⚠️ 저장 실패');}
+  });
 }
 
 
