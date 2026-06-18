@@ -1694,6 +1694,38 @@ const SUPABASE_KEY='sb_publishable_Lal07BCr6cnsVVmTx2PR8w_CKcnKU0n';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 
+
+/* ══ SUPABASE 댓글 ══ */
+var _feedCommentsCache={};  // trip_id → 댓글 배열
+
+async function loadComments(tripId){
+  // 진짜 여행(UUID)만 DB 조회
+  if(!/^[0-9a-f]{8}-/.test(String(tripId)))return [];
+  try{
+    const {data,error}=await sb.from('trip_comments').select('*').eq('trip_id',tripId).order('created_at',{ascending:true});
+    if(error)throw error;
+    return (data||[]).map(function(c){
+      return{id:c.id,author:c.author_name||'여행자',av:(c.author_name||'여')[0],txt:c.text,ts:new Date(c.created_at).getTime(),userId:c.user_id};
+    });
+  }catch(e){return [];}
+}
+
+async function addComment(tripId, text){
+  if(!currentUser)return null;
+  try{
+    const {data,error}=await sb.from('trip_comments').insert({
+      trip_id:tripId, user_id:currentUser.id,
+      author_name:currentUser.name, text:text
+    }).select().single();
+    if(error)throw error;
+    return{id:data.id,author:data.author_name,av:data.author_name[0],txt:data.text,ts:new Date(data.created_at).getTime(),userId:data.user_id};
+  }catch(e){console.error(e);return null;}
+}
+
+async function deleteComment(commentId){
+  try{ await sb.from('trip_comments').delete().eq('id',commentId); }catch(e){}
+}
+
 /* ══ 커뮤니티 피드 (공개 여행) ══ */
 var _publicTrips=[];  // DB에서 불러온 공개 여행
 
@@ -1704,8 +1736,7 @@ async function loadPublicTrips(){
       .select('*')
       .eq('is_public',true)
       .limit(50);
-    if(error){console.error('[트립토핑] 쿼리 에러:',error.message,error.details,error.hint);throw error;}
-    console.log('[트립토핑] 공개여행 불러옴:', (data||[]).length, '개');
+    if(error)throw error;
     _publicTrips=(data||[]).map(function(r){
       var t=dbToTrip(r);
       t.author='여행자';
@@ -1737,7 +1768,7 @@ async function loadPublicTrips(){
         (myLikes||[]).forEach(function(l){marketLikes[l.trip_id]=1;});
       }
     }catch(e){}
-  }catch(e){_publicTrips=[];console.error('[트립토핑] 공개여행 로드 실패:',e.message||e,'| 상세:',JSON.stringify(e));}
+  }catch(e){_publicTrips=[];}
 }
 
 /* ══ SUPABASE 여행 데이터 ══ */
@@ -2508,14 +2539,13 @@ async function quickTogglePub(id){
   // DB 업데이트
   if(currentUser){
     const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',id).select();
-    if(error){console.error('[트립토핑] 공개 토글 실패:',error.message,error);toast('⚠️ 공개 설정 저장 실패');}
-    else{console.log('[트립토핑] 공개 토글 성공:',id,'→',t.isPublic,data);}
+    if(error){toast('⚠️ 공개 설정 저장 실패');}
   }
   toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
 }
 function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
-async function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);if(currentUser){const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id).select();if(error){console.error('[트립토핑] 공개 토글 실패:',error.message);}else{console.log('[트립토핑] 공개 토글:',t.id,'→',t.isPublic);}}toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
+async function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);if(currentUser){const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id).select();if(error){}}toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
 function delTrip(id){if(!confirm('정말 삭제할까요?'))return;delTripFromDB(id);trips=trips.filter(x=>x.id!==id);saveTD();renderTripList();toast('삭제됐어요');}
 function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim()&&document.getElementById('newStart').value&&document.getElementById('newEnd').value;document.getElementById('createBtn').disabled=!ok;}
@@ -3160,6 +3190,8 @@ function openFeedDetail(id){
   }).join('');
   // 좋아요 상태
   updateFeedLikeUI();
+  // 댓글 캐시 초기화 (최신 불러오기)
+  if(_currentFeed){delete _feedCommentsCache[_currentFeed.id];delete _feedCommentsCache['_loaded_'+_currentFeed.id];}
   renderFeedComments();
   // 내 여행이면 복사 버튼 비활성화
   var copyBtn=document.querySelector('.fda-copy');
@@ -3210,11 +3242,20 @@ const SAMPLE_FEED_COMMENTS={
 function getFeedComments(id){
   const sample=SAMPLE_FEED_COMMENTS[id]||[];
   const user=(userComments['feed_'+id])||[];
-  return[...sample,...user].sort((a,b)=>a.ts-b.ts);
+  const db=_feedCommentsCache[id]||[];
+  return[...sample,...user,...db].sort((a,b)=>a.ts-b.ts);
 }
 
 function renderFeedComments(){
   if(!_currentFeed)return;
+  // DB 댓글 비동기 로드 후 다시 렌더 (진짜 여행만)
+  if(/^[0-9a-f]{8}-/.test(String(_currentFeed.id)) && !_feedCommentsCache['_loaded_'+_currentFeed.id]){
+    _feedCommentsCache['_loaded_'+_currentFeed.id]=true;
+    loadComments(_currentFeed.id).then(function(dbc){
+      _feedCommentsCache[_currentFeed.id]=dbc;
+      renderFeedComments();
+    });
+  }
   const list=getFeedComments(_currentFeed.id);
   document.getElementById('fdCommentCount').textContent=list.length?`${list.length}개`:'';
   const av=currentUser?currentUser.avatar:'나';
@@ -3229,15 +3270,30 @@ function renderFeedComments(){
 
 function submitFeedComment(){
   if(!_currentFeed)return;
+  if(!currentUser){toast('댓글을 남기려면 로그인이 필요해요');openAuth();return;}
   const inp=document.getElementById('fdCommentInput');
   if(!inp||!inp.value.trim())return;
-  const key='feed_'+_currentFeed.id;
-  if(!userComments[key])userComments[key]=[];
-  userComments[key].push({id:'ufc'+Date.now(),author:currentUser?currentUser.name:'익명 여행자',av:currentUser?currentUser.avatar:'익',txt:inp.value.trim(),ts:Date.now()});
-  saveCommentData();
+  const txt=inp.value.trim();
+  const tripId=_currentFeed.id;
   inp.value='';
-  renderFeedComments();
-  toast('💬 댓글이 등록됐어요!');
+  // 진짜 여행(UUID)이면 DB 저장, 샘플이면 로컬
+  if(/^[0-9a-f]{8}-/.test(String(tripId))){
+    addComment(tripId,txt).then(function(c){
+      if(c){
+        if(!_feedCommentsCache[tripId])_feedCommentsCache[tripId]=[];
+        _feedCommentsCache[tripId].push(c);
+        renderFeedComments();
+        toast('💬 댓글이 등록됐어요!');
+      }else{toast('⚠️ 댓글 등록 실패');}
+    });
+  }else{
+    const key='feed_'+tripId;
+    if(!userComments[key])userComments[key]=[];
+    userComments[key].push({id:'ufc'+Date.now(),author:currentUser.name,av:currentUser.avatar,txt:txt,ts:Date.now()});
+    saveCommentData();
+    renderFeedComments();
+    toast('💬 댓글이 등록됐어요!');
+  }
 }
 
 
