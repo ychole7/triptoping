@@ -1994,6 +1994,57 @@ async function delTripFromDB(id){
   try{ await sb.from('trips').delete().eq('id',id); }catch(e){console.error(e);}
 }
 
+function delTrip(id){
+  if(!confirm('정말 삭제할까요?'))return;
+  delTripFromDB(id);
+  trips=trips.filter(function(x){return x.id!==id;});
+  saveTD();
+  renderTripList();
+  toast('삭제됐어요');
+}
+
+/* ══ [복구] 항공편 ══ */
+function renderFlights(){const t=getTrip();document.getElementById('flightList').innerHTML=(t&&t.flights||[]).map((f,i)=>`<div class="saved-i"><div class="saved-i-top"><div class="saved-i-label"><i class="ti ti-plane"></i> ${f.airline||''} ${f.num||''}</div><button class="saved-i-del" onclick="delFlight(${i})"><i class="ti ti-x"></i></button></div><div class="saved-i-grid"><div><div class="si-r">출발</div><div class="si-v">${f.from||'-'}</div></div><div><div class="si-r">도착</div><div class="si-v">${f.to||'-'}</div></div><div><div class="si-r">날짜</div><div class="si-v">${fmtDate(f.date)}</div></div><div><div class="si-r">시간</div><div class="si-v">${f.time||'-'}</div></div></div></div>`).join('');}
+function showFlightForm(){document.getElementById('flightForm').style.display='block';document.getElementById('addFlightBtn').style.display='none';}
+function cancelFlightForm(){document.getElementById('flightForm').style.display='none';document.getElementById('addFlightBtn').style.display='flex';}
+function saveFlight(){const t=getTrip();if(!t)return;const f={airline:document.getElementById('fl-airline').value,num:document.getElementById('fl-num').value,from:document.getElementById('fl-from').value,to:document.getElementById('fl-to').value,date:document.getElementById('fl-date').value,time:document.getElementById('fl-time').value};if(!f.airline&&!f.from){toast('항공사를 입력해주세요');return;}t.flights.push(f);saveTD();renderFlights();cancelFlightForm();['fl-airline','fl-num','fl-from','fl-to','fl-date','fl-time'].forEach(id=>document.getElementById(id).value='');toast('✈️ 항공편 추가!');}
+function delFlight(i){const t=getTrip();if(!t)return;t.flights.splice(i,1);saveTD();renderFlights();}
+
+/* ══ [복구] 숙소 ══ */
+function renderHotels(){const t=getTrip();document.getElementById('hotelList').innerHTML=(t&&t.hotels||[]).map((h,i)=>`<div class="saved-i"><div class="saved-i-top"><div class="saved-i-label"><i class="ti ti-bed"></i> ${h.name||''} ${h.grade||''}</div><button class="saved-i-del" onclick="delHotel(${i})"><i class="ti ti-x"></i></button></div><div class="saved-i-grid"><div><div class="si-r">체크인</div><div class="si-v">${fmtDate(h.in)}</div></div><div><div class="si-r">체크아웃</div><div class="si-v">${fmtDate(h.out)}</div></div><div><div class="si-r">예약번호</div><div class="si-v">${h.code||'-'}</div></div><div><div class="si-r">가격</div><div class="si-v">${h.price||'-'}</div></div></div></div>`).join('');}
+function showHotelForm(){document.getElementById('hotelForm').style.display='block';document.getElementById('addHotelBtn').style.display='none';}
+function cancelHotelForm(){document.getElementById('hotelForm').style.display='none';document.getElementById('addHotelBtn').style.display='flex';}
+function saveHotel(){const t=getTrip();if(!t)return;const h={name:document.getElementById('ht-name').value,grade:document.getElementById('ht-grade').value,in:document.getElementById('ht-in').value,out:document.getElementById('ht-out').value,code:document.getElementById('ht-code').value,price:document.getElementById('ht-price').value};if(!h.name){toast('숙소명을 입력해주세요');return;}t.hotels.push(h);saveTD();renderHotels();cancelHotelForm();['ht-name','ht-grade','ht-in','ht-out','ht-code','ht-price'].forEach(id=>document.getElementById(id).value='');toast('🏨 숙소 추가!');}
+function delHotel(i){const t=getTrip();if(!t)return;t.hotels.splice(i,1);saveTD();renderHotels();}
+
+/* ══ [복구] 섹션 토글 ══ */
+function toggleSec(s){var b=document.getElementById(s+'-body');var tg=document.getElementById(s+'-toggle');if(b)b.classList.toggle('open');if(tg)tg.classList.toggle('open');}
+
+/* ══ [복구] Day 탭 ══ */
+function renderDayTabs(){const t=getTrip();if(!t)return;document.getElementById('dayTabRow').innerHTML=(t.days||[]).map((d,i)=>`<div class="d-tab${i===currentDayIdx?' on':''}" onclick="switchDay(${i})">Day ${i+1}</div>`).join('')+`<div class="add-d-tab" onclick="addDay()"><i class="ti ti-plus"></i> 추가</div>`;}
+function switchDay(i){currentDayIdx=i;renderDayTabs();renderDayEdit();}
+function addDay(){const t=getTrip();if(!t)return;t.days.push({title:`Day ${t.days.length+1}`,items:[]});currentDayIdx=t.days.length-1;if(t.start){var ne=new Date(t.start);ne.setDate(ne.getDate()+(t.days.length-1));t.end=ne.toISOString().split('T')[0];}saveTD();renderDayTabs();renderDayEdit();var mr=document.getElementById('detailMetaRow');if(mr&&t.dest){mr.innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-moon" style="font-size:11px;"></i> ${fmtDuration(t.start,t.end)}</span>`;}toast('📅 Day 추가 · 날짜 조정됨');}
+
+/* ══ [복구] 새 여행 만들기 ══ */
+function checkNewForm(){const ok=document.getElementById('newName').value.trim()&&document.getElementById('newDest').value.trim();var btn=document.getElementById('createBtn');if(btn)btn.disabled=!ok;}
+function createTrip(){const name=document.getElementById('newName').value.trim(),dest=document.getElementById('newDest').value.trim();var start=document.getElementById('newStart').value,end=document.getElementById('newEnd').value;const companion=document.getElementById('newCompanion').value.trim();
+  if(start&&end&&new Date(end)<new Date(start)){var _tmp=start;start=end;end=_tmp;}
+  if(start&&!end)end=start;if(end&&!start)start=end;
+  var n=getDays(start,end);if(n<1)n=1;
+  var cc=(typeof findCityCoords==='function')?findCityCoords(dest):null;
+  var firstItem={time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'};
+  if(cc){firstItem.lat=cc[0];firstItem.lng=cc[1];}
+  const nt={id:'t'+Date.now(),name,dest,start,end,companion,toppings:[],isPublic:false,copiedCount:0,flights:[],hotels:[],checklist:[],days:Array.from({length:n},(_,i)=>({title:`Day ${i+1}`,items:[i===0?firstItem:{time:'오전 10시',name:'일정을 추가해보세요',desc:'아래 + 버튼으로 장소를 추가하세요'}]}))};
+  if(!currentUser){toast('로그인이 필요해요');openAuth();return;}
+  saveTripToDB(nt).then(function(saved){
+    if(saved){nt.id=saved.id;trips.unshift(saved);}else{trips.unshift(nt);}
+    saveTD();toast('🍕 여행이 만들어졌어요!');openTrip(nt.id);
+  });}
+
+/* ══ [복구] 편집 저장 후 나가기 ══ */
+function saveDetailBack(){var t=getTrip();if(t&&currentUser&&/^[0-9a-f]{8}-/.test(String(t.id))){saveTripToDB(t);}saveTD();goMyTrips();}
+
+
 
 /* ══ AI API ══ */
 function getApiKey(){ try{return localStorage.getItem('tt_api_key')||'';}catch(e){return'';} }
