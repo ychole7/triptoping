@@ -1045,6 +1045,22 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 
 .trip-orig{font-size:11px;color:#00A88E;margin-top:5px;background:#EAF7F4;display:inline-block;padding:2px 9px;border-radius:9px;}
 
+
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.ph-grid:empty{display:none;}
+.ph-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#F5F3EF;}
+.ph-item img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.ph-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);color:white;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;}
+.ph-add-btn{width:100%;background:#FFF4ED;border:1.5px dashed var(--or);border-radius:12px;padding:13px;color:var(--or);font-family:'Gowun Dodum',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;}
+.ph-add-btn:hover{background:#FFE8DA;}
+.ph-add-btn:disabled{opacity:.5;cursor:not-allowed;}
+.ph-uploading{text-align:center;font-size:12px;color:var(--or);padding:8px;}
+/* 사진 확대 보기 */
+.ph-viewer{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:none;align-items:center;justify-content:center;}
+.ph-viewer.show{display:flex;}
+.ph-viewer img{max-width:94%;max-height:88%;border-radius:8px;}
+.ph-viewer-close{position:absolute;top:18px;right:20px;color:white;font-size:30px;cursor:pointer;background:none;border:none;}
+
 </style>
 
   <!-- PWA -->
@@ -1467,6 +1483,19 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
         <input class="ck-add-input" id="ckAddInput" type="text" placeholder="직접 추가 (예: 멀티어댑터)" maxlength="40" onkeydown="if(event.key==='Enter')addCheckItem()"/>
         <button class="ck-add-btn" onclick="addCheckItem()"><i class="ti ti-plus"></i></button>
       </div>
+    </div>
+  </div>
+  <!-- 여행 사진 앨범 -->
+  <div class="info-sec">
+    <div class="info-sec-hdr" onclick="toggleSec('ph')">
+      <div class="info-sec-ttl"><i class="ti ti-photo"></i> 여행 사진 <span id="phCount" style="font-size:11px;color:var(--gy);font-weight:400;"></span></div>
+      <i class="ti ti-chevron-down info-toggle" id="ph-toggle"></i>
+    </div>
+    <div class="info-body" id="ph-body">
+      <div class="ph-grid" id="phGrid"></div>
+      <input type="file" id="phFileInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoUpload(event)"/>
+      <button class="ph-add-btn" id="phAddBtn" onclick="document.getElementById('phFileInput').click()"><i class="ti ti-camera-plus"></i> 사진 추가</button>
+      <div class="rv-hint">📷 여행당 최대 10장 · 자동 압축돼서 가볍게 저장돼요</div>
     </div>
   </div>
   <div class="day-label-sec"><i class="ti ti-calendar"></i> 일정 편집</div>
@@ -1933,6 +1962,7 @@ function dbToTrip(r){
     flights:r.flights||[], hotels:r.hotels||[],
     checklist:r.checklist||[],
     rating:r.rating||0, review:r.review||'', visited:!!r.visited,
+    photos:r.photos||[],
     originalAuthor:r.original_author||null, originalTripId:r.original_trip_id||null,
     _copySnapshot:r.copy_snapshot||null,
     isPublic:r.is_public, copiedCount:r.copied_count||0
@@ -1948,6 +1978,7 @@ function tripToDb(t){
     flights:t.flights||[], hotels:t.hotels||[],
     checklist:t.checklist||[],
     rating:t.rating||0, review:t.review||'', visited:!!t.visited,
+    photos:t.photos||[],
     original_author:t.originalAuthor||null, original_trip_id:t.originalTripId||null,
     copy_snapshot:t._copySnapshot||null,
     is_public:!!t.isPublic, copied_count:t.copiedCount||0
@@ -2781,7 +2812,7 @@ async function quickTogglePub(id){
   }
   toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
 }
-function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
+function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();renderPhotos();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
 async function togglePublic(){
   const t=getTrip();if(!t)return;
@@ -4052,6 +4083,122 @@ function saveReviewAndExit(){
   setTimeout(function(){goMyTrips();},500);
 }
 
+
+/* ══ 사진 업로드 (압축 + Supabase Storage) ══ */
+// 이미지 압축 (긴 변 1280px, JPEG 75%)
+function compressImage(file, maxSize, quality){
+  maxSize=maxSize||1280; quality=quality||0.75;
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var w=img.width,h=img.height;
+        if(w>h){if(w>maxSize){h=Math.round(h*maxSize/w);w=maxSize;}}
+        else{if(h>maxSize){w=Math.round(w*maxSize/h);h=maxSize;}}
+        var canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(function(blob){resolve(blob);},'image/jpeg',quality);
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Supabase Storage에 업로드 → 공개 URL 반환
+async function uploadPhoto(file){
+  if(!currentUser){toast('로그인이 필요해요');return null;}
+  try{
+    var blob=await compressImage(file);
+    // 용량 체크 (압축 후 2MB 넘으면 거부)
+    if(blob.size>2*1024*1024){toast('사진이 너무 커요');return null;}
+    var ext='jpg';
+    var path=currentUser.id+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.'+ext;
+    var {data,error}=await sb.storage.from('trip-photos').upload(path,blob,{contentType:'image/jpeg'});
+    if(error){console.error('업로드 실패',error);toast('⚠️ 업로드 실패');return null;}
+    var {data:urlData}=sb.storage.from('trip-photos').getPublicUrl(path);
+    return {url:urlData.publicUrl, path:path};
+  }catch(e){console.error(e);toast('⚠️ 사진 처리 실패');return null;}
+}
+
+// 사진 삭제
+async function deletePhoto(path){
+  if(!path)return;
+  try{ await sb.storage.from('trip-photos').remove([path]); }catch(e){}
+}
+
+
+/* ══ 여행 사진 갤러리 ══ */
+function renderPhotos(){
+  var t=getTrip();if(!t)return;
+  if(!t.photos)t.photos=[];
+  var grid=document.getElementById('phGrid');
+  var cnt=document.getElementById('phCount');
+  var addBtn=document.getElementById('phAddBtn');
+  if(cnt)cnt.textContent=t.photos.length?'('+t.photos.length+'/10)':'';
+  if(grid){
+    grid.innerHTML=t.photos.map(function(p,i){
+      return'<div class="ph-item"><img src="'+p.url+'" onclick="openPhViewer(\''+p.url+'\')"/><button class="ph-del" onclick="delPhoto('+i+')">&times;</button></div>';
+    }).join('');
+  }
+  if(addBtn){
+    if(t.photos.length>=10){addBtn.disabled=true;addBtn.innerHTML='<i class="ti ti-check"></i> 사진 10장 가득 찼어요';}
+    else{addBtn.disabled=false;addBtn.innerHTML='<i class="ti ti-camera-plus"></i> 사진 추가';}
+  }
+}
+
+async function handlePhotoUpload(e){
+  var t=getTrip();if(!t)return;
+  if(!t.photos)t.photos=[];
+  var files=Array.from(e.target.files||[]);
+  e.target.value='';  // 같은 파일 다시 선택 가능하게
+  if(!files.length)return;
+  // 남은 칸만큼만
+  var room=10-t.photos.length;
+  if(room<=0){toast('사진은 최대 10장이에요');return;}
+  files=files.slice(0,room);
+  var addBtn=document.getElementById('phAddBtn');
+  if(addBtn){addBtn.disabled=true;addBtn.innerHTML='<i class="ti ti-loader"></i> 업로드 중...';}
+  var ok=0;
+  for(var i=0;i<files.length;i++){
+    var res=await uploadPhoto(files[i]);
+    if(res){t.photos.push(res);ok++;renderPhotos();}
+  }
+  saveTD();
+  // DB 저장
+  if(currentUser&&/^[0-9a-f]{8}-/.test(String(t.id))){
+    sb.from('trips').update({photos:t.photos}).eq('id',t.id);
+  }
+  renderPhotos();
+  if(ok)toast('📷 사진 '+ok+'장 추가됐어요!');
+}
+
+function delPhoto(i){
+  var t=getTrip();if(!t||!t.photos[i])return;
+  if(!confirm('이 사진을 삭제할까요?'))return;
+  var p=t.photos[i];
+  deletePhoto(p.path);
+  t.photos.splice(i,1);
+  saveTD();
+  if(currentUser&&/^[0-9a-f]{8}-/.test(String(t.id))){
+    sb.from('trips').update({photos:t.photos}).eq('id',t.id);
+  }
+  renderPhotos();
+  toast('사진이 삭제됐어요');
+}
+
+function openPhViewer(url){
+  document.getElementById('phViewerImg').src=url;
+  document.getElementById('phViewer').classList.add('show');
+}
+function closePhViewer(){
+  document.getElementById('phViewer').classList.remove('show');
+}
+
 </script>
 
 <!-- SHARE MODAL -->
@@ -4138,5 +4285,6 @@ function saveReviewAndExit(){
   <button onclick="dismissInstall()" style="flex-shrink:0;background:none;border:none;color:#C8C5C0;cursor:pointer;font-size:18px;padding:2px;"><i class="ti ti-x"></i></button>
 </div>
 
+<div class="ph-viewer" id="phViewer" onclick="closePhViewer()"><button class="ph-viewer-close" onclick="closePhViewer()">&times;</button><img id="phViewerImg" src="" alt=""/></div>
 </body>
 </html>
