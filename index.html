@@ -1042,6 +1042,9 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .rv-save-btn:hover{transform:scale(.98);}
 .t-btn.amber{border-color:#FFB800;color:#E09900;background:#FFFBF0;}
 
+
+.trip-orig{font-size:11px;color:#00A88E;margin-top:5px;background:#EAF7F4;display:inline-block;padding:2px 9px;border-radius:9px;}
+
 </style>
 
   <!-- PWA -->
@@ -1930,6 +1933,7 @@ function dbToTrip(r){
     flights:r.flights||[], hotels:r.hotels||[],
     checklist:r.checklist||[],
     rating:r.rating||0, review:r.review||'', visited:!!r.visited,
+    originalAuthor:r.original_author||null, originalTripId:r.original_trip_id||null,
     isPublic:r.is_public, copiedCount:r.copied_count||0
   };
 }
@@ -1943,6 +1947,7 @@ function tripToDb(t){
     flights:t.flights||[], hotels:t.hotels||[],
     checklist:t.checklist||[],
     rating:t.rating||0, review:t.review||'', visited:!!t.visited,
+    original_author:t.originalAuthor||null, original_trip_id:t.originalTripId||null,
     is_public:!!t.isPublic, copied_count:t.copiedCount||0
   };
 }
@@ -2690,6 +2695,7 @@ function renderTripList(){
     ${getDdayBadge(t.start)}
     <div class="trip-name">✈️ ${t.name}${t.isPublic?'<span class="pub-badge">공개중</span>':''}</div>
     <div class="trip-info"><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest} · <i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)===fmtDate(t.end)?fmtDate(t.start)+' · 당일':fmtDate(t.start)+' ~ '+fmtDate(t.end)} · ${t.companion||''}</div>
+    ${t.originalAuthor?`<div class="trip-orig">🔗 ${t.originalAuthor}님의 일정에서 가져왔어요</div>`:''}
     <div class="trip-tops">${(t.toppings||[]).map(tp=>`<span class="trip-tb">🍕 ${tp}</span>`).join('')}</div>
     ${(t.visited||t.rating)?`<div class="trip-review-row">${t.visited?'<span class="trip-visited">✈️ 다녀옴</span>':''}${t.rating?`<span class="trip-stars">${'★'.repeat(t.rating)}${'☆'.repeat(5-t.rating)}</span>`:''}${t.review?`<span class="trip-has-review">📝 후기</span>`:''}</div>`:''}
     ${t.isPublic?`<div class="trip-copy-cnt"><i class="ti ti-copy"></i> ${t.copiedCount||0}명이 복사했어요</div>`:''}
@@ -2955,12 +2961,16 @@ function copyTrip(id){
   // 공개여행/샘플/내여행에서 원본 찾기
   let src=_publicTrips.find(m=>m.id===id)||MARKET_DATA.find(m=>m.id===id)||trips.find(t=>t.id===id);
   if(!src){toast('일정을 불러올 수 없어요');return;}
+  // 원작자 정보 (출처)
+  var origAuthor=src.author||src.originalAuthor||'여행자';
+  var origTripId=/^[0-9a-f]{8}-/.test(String(id))?id:null;
   // 내 여행으로 복사
   const newT={
-    name:(src.name||'복사한 여행')+' (내 편집본)',
+    name:(src.name||'복사한 여행'),
     dest:src.dest||'',companion:src.companion||'',start:'',end:'',
     toppings:src.toppings||[],isPublic:false,copiedCount:0,
     flights:[],hotels:[],
+    originalAuthor:origAuthor, originalTripId:origTripId,
     days:(src.fullDays||src.days||[]).map(function(d){return{title:d.title,items:(d.items||[]).map(function(it){return{time:it.time,name:it.name,desc:it.desc,lat:it.lat||null,lng:it.lng||null};})};})
   };
   toast('복사 중...');
@@ -2969,9 +2979,11 @@ function copyTrip(id){
       trips.unshift(saved);
       // 원본의 copied_count 증가 (UUID인 진짜 여행만)
       if(/^[0-9a-f]{8}-/.test(String(id))){
-        sb.rpc('increment_copy',{trip_id_param:id}).then(function(){}).catch(function(){
-          // RPC 없으면 무시
-        });
+        sb.rpc('increment_copy',{trip_id_param:id}).then(function(){
+          // 화면 캐시도 +1
+          var pt=_publicTrips.find(function(x){return x.id===id;});
+          if(pt)pt.copiedCount=(pt.copiedCount||0)+1;
+        }).catch(function(){});
       }
       toast('🍕 내 보관함에 복사됐어요!');
       goMyTrips();
@@ -3412,7 +3424,7 @@ function openFeedDetail(id){
   var pub=_publicTrips.find(function(x){return x.id===id;});
   var t;
   if(pub){
-    t={id:pub.id,name:pub.name,dest:pub.dest,companion:pub.companion||'',duration:fmtDuration(pub.start,pub.end),author:pub.author,authorAv:pub.authorAv,toppings:pub.toppings||[],copiedCount:pub.copiedCount||0,likes:pub.likes||0,isMine:pub.isMine,days:(pub.days||[]),rating:pub.rating||0,review:pub.review||'',visited:pub.visited};
+    t={id:pub.id,name:pub.name,dest:pub.dest,companion:pub.companion||'',duration:fmtDuration(pub.start,pub.end),author:pub.author,authorAv:pub.authorAv,toppings:pub.toppings||[],copiedCount:pub.copiedCount||0,likes:pub.likes||0,isMine:pub.isMine,days:(pub.days||[]),rating:pub.rating||0,review:pub.review||'',visited:pub.visited,originalAuthor:pub.originalAuthor||null};
   }else{
     t=MARKET_DATA.find(function(x){return x.id===id;});
   }
