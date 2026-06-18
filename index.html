@@ -1061,6 +1061,24 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .ph-viewer img{max-width:94%;max-height:88%;border-radius:8px;}
 .ph-viewer-close{position:absolute;top:18px;right:20px;color:white;font-size:30px;cursor:pointer;background:none;border:none;}
 
+
+.date-edit-btn{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.25);color:white;border:1px solid rgba(255,255,255,.4);border-radius:9px;padding:6px 12px;font-size:12px;font-family:'Gowun Dodum',sans-serif;cursor:pointer;margin-top:8px;transition:background .15s;}
+.date-edit-btn:hover{background:rgba(255,255,255,.35);}
+.date-edit-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:none;align-items:flex-end;justify-content:center;}
+.date-edit-overlay.show{display:flex;}
+.date-edit-sheet{background:white;width:100%;max-width:444px;border-radius:22px 22px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));animation:slideUp .25s;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.des-title{font-family:'Black Han Sans',sans-serif;font-size:18px;margin-bottom:18px;text-align:center;}
+.des-field{margin-bottom:14px;}
+.des-field label{display:block;font-size:13px;color:var(--dk);font-weight:600;margin-bottom:6px;}
+.des-field input{width:100%;border:1.5px solid var(--bd);border-radius:11px;padding:12px;font-size:15px;font-family:'Gowun Dodum',sans-serif;color:var(--dk);outline:none;box-sizing:border-box;}
+.des-field input:focus{border-color:var(--or);}
+.des-hint{font-size:13px;color:var(--or);font-weight:600;text-align:center;min-height:18px;margin-bottom:8px;}
+.des-warn{font-size:11px;color:var(--gy);background:#FFF8F0;padding:9px 12px;border-radius:9px;margin-bottom:16px;line-height:1.5;}
+.des-btns{display:flex;gap:10px;}
+.des-cancel{flex:1;background:#F5F3EF;color:var(--dk);border:none;border-radius:12px;padding:14px;font-size:14px;font-family:'Gowun Dodum',sans-serif;cursor:pointer;}
+.des-save{flex:2;background:linear-gradient(135deg,#FF5F1F,#FF8C42);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-family:'Black Han Sans',sans-serif;cursor:pointer;}
+
 </style>
 
   <!-- PWA -->
@@ -1431,6 +1449,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <input class="detail-name-inp" id="detailNameInp" type="text" placeholder="여행 이름"/>
     </div>
     <div class="detail-meta-row" id="detailMetaRow"></div>
+    <button class="date-edit-btn" onclick="openDateEdit()"><i class="ti ti-calendar-event"></i> 날짜·기간 변경</button>
     <div class="pub-toggle-row">
       <div><div class="pt-label">🌏 다른 사용자에게 공개</div><div class="pt-sub">공개하면 여행 피드에서 다른 여행자가 복사할 수 있어요</div></div>
       <button class="toggle-sw" id="publicToggle" onclick="togglePublic()"></button>
@@ -4194,6 +4213,67 @@ function closePhViewer(){
   document.getElementById('phViewer').classList.remove('show');
 }
 
+
+/* ══ 날짜·기간 변경 ══ */
+function openDateEdit(){
+  var t=getTrip();if(!t)return;
+  document.getElementById('deStart').value=t.start||'';
+  document.getElementById('deEnd').value=t.end||'';
+  deSyncEnd();
+  document.getElementById('dateEditOverlay').classList.add('show');
+}
+function closeDateEdit(){
+  document.getElementById('dateEditOverlay').classList.remove('show');
+}
+function deSyncEnd(){
+  var s=document.getElementById('deStart').value;
+  var endInp=document.getElementById('deEnd');
+  if(s)endInp.min=s;
+  // 기간 안내
+  var e=endInp.value;
+  var hint=document.getElementById('deHint');
+  if(s&&e){
+    var n=getDays(s,e);
+    if(n<1){hint.textContent='귀국일이 출발일보다 빨라요';}
+    else{hint.textContent=n+'일 일정 ('+(n-1)+'박 '+n+'일)';}
+  }else{hint.textContent='';}
+}
+function saveDateEdit(){
+  var t=getTrip();if(!t)return;
+  var s=document.getElementById('deStart').value;
+  var e=document.getElementById('deEnd').value;
+  if(!s){toast('출발일을 선택해주세요');return;}
+  if(!e)e=s;  // 귀국일 없으면 당일치기
+  // 거꾸로면 교환
+  if(new Date(e)<new Date(s)){var tmp=s;s=e;e=tmp;}
+  var newN=getDays(s,e);
+  if(newN<1)newN=1;
+  var oldN=(t.days||[]).length;
+  // Day 수 조정
+  if(newN>oldN){
+    // 늘리기: 빈 Day 추가
+    for(var i=oldN;i<newN;i++){
+      t.days.push({title:'Day '+(i+1),items:[{time:'오전 10시',name:'일정을 추가해보세요',desc:''}]});
+    }
+  }else if(newN<oldN){
+    // 줄이기: 초과 Day에 일정 있으면 확인
+    var hasItems=false;
+    for(var j=newN;j<oldN;j++){
+      if((t.days[j].items||[]).some(function(it){return it.name&&it.name!=='일정을 추가해보세요';}))hasItems=true;
+    }
+    if(hasItems&&!confirm('기간을 줄이면 Day '+(newN+1)+' 이후의 일정이 삭제돼요. 계속할까요?'))return;
+    t.days=t.days.slice(0,newN);
+    if(currentDayIdx>=newN)currentDayIdx=newN-1;
+  }
+  t.start=s;t.end=e;
+  saveTD();
+  // 화면 갱신
+  document.getElementById('detailMetaRow').innerHTML='<span><i class="ti ti-map-pin" style="font-size:11px;"></i> '+t.dest+'</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> '+fmtDate(t.start)+' ~ '+fmtDate(t.end)+'</span><span><i class="ti ti-moon" style="font-size:11px;"></i> '+fmtDuration(t.start,t.end)+'</span>';
+  renderDayTabs();renderDayEdit();
+  closeDateEdit();
+  toast('📅 날짜가 변경됐어요!');
+}
+
 </script>
 
 <!-- SHARE MODAL -->
@@ -4281,5 +4361,24 @@ function closePhViewer(){
 </div>
 
 <div class="ph-viewer" id="phViewer" onclick="closePhViewer()"><button class="ph-viewer-close" onclick="closePhViewer()">&times;</button><img id="phViewerImg" src="" alt=""/></div>
+<div class="date-edit-overlay" id="dateEditOverlay" onclick="if(event.target===this)closeDateEdit()">
+  <div class="date-edit-sheet">
+    <div class="des-title">📅 여행 날짜 변경</div>
+    <div class="des-field">
+      <label>출발일</label>
+      <input type="date" id="deStart" oninput="deSyncEnd()"/>
+    </div>
+    <div class="des-field">
+      <label>귀국일</label>
+      <input type="date" id="deEnd"/>
+    </div>
+    <div class="des-hint" id="deHint"></div>
+    <div class="des-warn">⚠️ 기간을 줄이면 초과하는 Day의 일정이 삭제될 수 있어요</div>
+    <div class="des-btns">
+      <button class="des-cancel" onclick="closeDateEdit()">취소</button>
+      <button class="des-save" onclick="saveDateEdit()">변경하기</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
