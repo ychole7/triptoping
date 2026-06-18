@@ -1006,6 +1006,22 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .ftc-del-cmt{color:#E74C3C;cursor:pointer;font-weight:600;}
 .ftc-del-cmt:hover{text-decoration:underline;}
 
+
+.rv-visited-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd);margin-bottom:12px;}
+.rv-visited-label{font-size:13px;color:var(--dk);font-weight:600;}
+.rv-toggle{width:44px;height:25px;border-radius:13px;background:#D8D4D0;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.rv-toggle::after{content:'';position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:white;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.rv-toggle.on{background:var(--or);}
+.rv-toggle.on::after{left:21.5px;}
+.rv-rating-label{font-size:13px;color:var(--dk);font-weight:600;margin-bottom:8px;}
+.rv-stars{display:flex;gap:6px;margin-bottom:14px;}
+.rv-star{font-size:30px;color:#D8D4D0;cursor:pointer;transition:all .15s;}
+.rv-star.on{color:#FFB800;}
+.rv-star:hover{transform:scale(1.15);}
+.rv-review-input{width:100%;min-height:90px;border:1.5px solid var(--bd);border-radius:12px;padding:12px;font-size:13px;font-family:'Gowun Dodum',sans-serif;color:var(--dk);outline:none;resize:vertical;line-height:1.6;box-sizing:border-box;transition:border-color .18s;}
+.rv-review-input:focus{border-color:var(--or);}
+.rv-hint{font-size:11px;color:var(--gy);margin-top:8px;line-height:1.6;}
+
 </style>
 
   <!-- PWA -->
@@ -1428,6 +1444,29 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
         <input class="ck-add-input" id="ckAddInput" type="text" placeholder="직접 추가 (예: 멀티어댑터)" maxlength="40" onkeydown="if(event.key==='Enter')addCheckItem()"/>
         <button class="ck-add-btn" onclick="addCheckItem()"><i class="ti ti-plus"></i></button>
       </div>
+    </div>
+  </div>
+  <!-- 나의 여행기 (후기·별점) -->
+  <div class="info-sec">
+    <div class="info-sec-hdr" onclick="toggleSec('rv')">
+      <div class="info-sec-ttl"><i class="ti ti-notebook"></i> 나의 여행기</div>
+      <i class="ti ti-chevron-down info-toggle" id="rv-toggle"></i>
+    </div>
+    <div class="info-body" id="rv-body">
+      <div class="rv-visited-row">
+        <span class="rv-visited-label">✈️ 다녀온 여행으로 표시</span>
+        <div class="rv-toggle" id="rvVisitedToggle" onclick="toggleVisited()"></div>
+      </div>
+      <div class="rv-rating-label">이번 여행 어땠나요?</div>
+      <div class="rv-stars" id="rvStars">
+        <i class="ti ti-star rv-star" onclick="setRating(1)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(2)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(3)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(4)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(5)"></i>
+      </div>
+      <textarea class="rv-review-input" id="rvReviewInput" placeholder="여행은 어땠나요? 기억하고 싶은 순간, 추천 팁, 아쉬웠던 점 등을 남겨보세요" maxlength="500" oninput="saveReview()"></textarea>
+      <div class="rv-hint">💡 다녀온 여행을 기록하면 나중에 추억으로 남고, 공개하면 다른 여행자에게도 도움이 돼요</div>
     </div>
   </div>
   <div class="day-label-sec"><i class="ti ti-calendar"></i> 일정 편집</div>
@@ -1853,6 +1892,7 @@ function dbToTrip(r){
     toppings:r.toppings||[], days:r.days||[],
     flights:r.flights||[], hotels:r.hotels||[],
     checklist:r.checklist||[],
+    rating:r.rating||0, review:r.review||'', visited:!!r.visited,
     isPublic:r.is_public, copiedCount:r.copied_count||0
   };
 }
@@ -1865,6 +1905,7 @@ function tripToDb(t){
     toppings:t.toppings||[], days:t.days||[],
     flights:t.flights||[], hotels:t.hotels||[],
     checklist:t.checklist||[],
+    rating:t.rating||0, review:t.review||'', visited:!!t.visited,
     is_public:!!t.isPublic, copied_count:t.copiedCount||0
   };
 }
@@ -2633,7 +2674,7 @@ async function quickTogglePub(id){
   }
   toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
 }
-function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
+function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();renderReview();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
 async function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);if(currentUser){const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id).select();if(error){}}toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
@@ -3841,6 +3882,40 @@ function delFeedComment(commentId){
     renderFeedComments();
     toast('댓글이 삭제됐어요');
   }
+}
+
+
+/* ══ 나의 여행기 (후기·별점) ══ */
+function renderReview(){
+  var t=getTrip();if(!t)return;
+  // 별점
+  var stars=document.querySelectorAll('#rvStars .rv-star');
+  stars.forEach(function(s,i){s.classList.toggle('on',i<(t.rating||0));});
+  // 후기
+  var inp=document.getElementById('rvReviewInput');
+  if(inp)inp.value=t.review||'';
+  // 다녀옴 토글
+  var tg=document.getElementById('rvVisitedToggle');
+  if(tg)tg.classList.toggle('on',!!t.visited);
+}
+function setRating(n){
+  var t=getTrip();if(!t)return;
+  t.rating=(t.rating===n)?0:n;  // 같은 별 다시 누르면 해제
+  renderReview();
+  saveTD();
+}
+function saveReview(){
+  var t=getTrip();if(!t)return;
+  var inp=document.getElementById('rvReviewInput');
+  t.review=inp?inp.value:'';
+  saveTD();
+}
+function toggleVisited(){
+  var t=getTrip();if(!t)return;
+  t.visited=!t.visited;
+  renderReview();
+  saveTD();
+  if(t.visited)toast('✈️ 다녀온 여행으로 표시했어요');
 }
 
 </script>
