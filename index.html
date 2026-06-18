@@ -2773,14 +2773,10 @@ function renderCommFull(){
     const liked=likedIds.has(t.id),top={...t,key:t.id,title:t.name},added=hasTop(top);
     const dTags=(t.dests||[]).map(d=>`<span class="dtg">${d}</span>`).join('');
     const rnk=isLk?(i===0?'<div class="rnk r1">1</div>':i===1?'<div class="rnk r2">2</div>':i===2?'<div class="rnk r3">3</div>':`<div class="rnk rn">${i+1}</div>`):'';
-    const allComments=getComments(t.id);
-    const commentToggle=`<div class="ftc-toggle-comment" onclick="toggleComments('${t.id}')"><i class="ti ti-message-circle"></i> 댓글 ${allComments.length}개${openComments.has(t.id)?' ▲ 접기':' ▼ 보기'}</div>`;
     return`<div class="ftc" id="fc-${t.id}">
       <div class="ftc-row">${rnk}<div class="ftc-em">${t.emoji}</div><div class="ftc-info"><div class="ftc-name">${t.name}</div><div class="ftc-desc">${t.desc}</div><div class="ftc-author">by ${t.author} · ${timeAgo(t.ts)}${isMyTop(t)?` <span class="my-top-badge">내 토핑</span>`:''}</div></div>
       <div class="ftc-acts"><button class="lk-btn${liked?' on':''}" onclick="toggleLike('${t.id}')"><i class="ti ti-heart"></i><span class="lk-cnt" id="lc-${t.id}">${t.likes}</span></button><button class="add-top-btn${added?' done':''}" onclick="toggleFT('${t.id}')">${added?'<i class="ti ti-check"></i> 추가됨':'<i class="ti ti-plus"></i> 추가'}</button></div></div>
       ${dTags?`<div style="margin-top:5px;">${dTags}</div>`:''}
-      ${commentToggle}
-      ${openComments.has(t.id)?renderComments(t.id):''}
     </div>`;
   }).join('');}
 function setSort(s){commSort=s;document.getElementById('srtLk').classList.toggle('on',s==='like');document.getElementById('srtNw').classList.toggle('on',s==='new');renderCommFull();}
