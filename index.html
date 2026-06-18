@@ -1036,6 +1036,12 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .fd-review-txt{font-size:13px;color:var(--dk);line-height:1.7;font-style:italic;margin-bottom:8px;}
 .fd-review-by{font-size:11px;color:var(--gy);text-align:right;}
 
+
+.rv-card{background:var(--wh);border:1.5px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+.rv-save-btn{width:100%;background:linear-gradient(135deg,#FF5F1F,#FF8C42);color:white;border:none;border-radius:14px;padding:15px;font-family:'Black Han Sans',sans-serif;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(255,95,31,.3);transition:transform .15s;margin-top:6px;}
+.rv-save-btn:hover{transform:scale(.98);}
+.t-btn.amber{border-color:#FFB800;color:#E09900;background:#FFFBF0;}
+
 </style>
 
   <!-- PWA -->
@@ -1460,29 +1466,6 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       </div>
     </div>
   </div>
-  <!-- 나의 여행기 (후기·별점) -->
-  <div class="info-sec">
-    <div class="info-sec-hdr" onclick="toggleSec('rv')">
-      <div class="info-sec-ttl"><i class="ti ti-notebook"></i> 나의 여행기</div>
-      <i class="ti ti-chevron-down info-toggle" id="rv-toggle"></i>
-    </div>
-    <div class="info-body" id="rv-body">
-      <div class="rv-visited-row">
-        <span class="rv-visited-label">✈️ 다녀온 여행으로 표시</span>
-        <div class="rv-toggle" id="rvVisitedToggle" onclick="toggleVisited()"></div>
-      </div>
-      <div class="rv-rating-label">이번 여행 어땠나요?</div>
-      <div class="rv-stars" id="rvStars">
-        <i class="ti ti-star rv-star" onclick="setRating(1)"></i>
-        <i class="ti ti-star rv-star" onclick="setRating(2)"></i>
-        <i class="ti ti-star rv-star" onclick="setRating(3)"></i>
-        <i class="ti ti-star rv-star" onclick="setRating(4)"></i>
-        <i class="ti ti-star rv-star" onclick="setRating(5)"></i>
-      </div>
-      <textarea class="rv-review-input" id="rvReviewInput" placeholder="여행은 어땠나요? 기억하고 싶은 순간, 추천 팁, 아쉬웠던 점 등을 남겨보세요" maxlength="500" oninput="saveReview()"></textarea>
-      <div class="rv-hint">💡 다녀온 여행을 기록하면 나중에 추억으로 남고, 공개하면 다른 여행자에게도 도움이 돼요</div>
-    </div>
-  </div>
   <div class="day-label-sec"><i class="ti ti-calendar"></i> 일정 편집</div>
   <div class="day-tab-row" id="dayTabRow"></div>
   <div class="day-edit-body" id="dayEditBody"></div>
@@ -1490,6 +1473,45 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 </div>
 
 <!-- BUDGET -->
+<!-- REVIEW (나의 여행기) -->
+<div class="scr" id="s-review">
+  <div class="screen-hdr orange">
+    <div class="shr-row">
+      <button class="back-btn" onclick="goMyTrips()"><i class="ti ti-arrow-left"></i></button>
+      <div class="shr-ttl" style="flex:1;">나의 여행기</div>
+    </div>
+    <div class="shr-sub" id="rvTripName">여행 후기를 남겨보세요</div>
+  </div>
+  <div style="padding:20px 16px;">
+    <div class="rv-card">
+      <div class="rv-visited-row">
+        <div>
+          <div class="rv-visited-label">✈️ 다녀온 여행</div>
+          <div style="font-size:11px;color:var(--gy);margin-top:2px;">실제 다녀왔다면 켜주세요</div>
+        </div>
+        <div class="rv-toggle" id="rvVisitedToggle" onclick="toggleVisited()"></div>
+      </div>
+    </div>
+    <div class="rv-card">
+      <div class="rv-rating-label">이번 여행, 별점을 준다면?</div>
+      <div class="rv-stars" id="rvStars" style="justify-content:center;margin:14px 0;">
+        <i class="ti ti-star rv-star" onclick="setRating(1)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(2)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(3)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(4)"></i>
+        <i class="ti ti-star rv-star" onclick="setRating(5)"></i>
+      </div>
+      <div id="rvRatingTxt" style="text-align:center;font-size:12px;color:var(--gy);min-height:16px;"></div>
+    </div>
+    <div class="rv-card">
+      <div class="rv-rating-label">여행은 어땠나요?</div>
+      <textarea class="rv-review-input" id="rvReviewInput" placeholder="기억하고 싶은 순간, 추천 팁, 아쉬웠던 점 등을 자유롭게 남겨보세요" maxlength="500" style="margin-top:10px;"></textarea>
+      <div class="rv-hint">💡 공개 여행이면 다른 여행자들도 이 후기를 볼 수 있어요</div>
+    </div>
+    <button class="rv-save-btn" onclick="saveReviewAndExit()"><i class="ti ti-check"></i> 저장하기</button>
+  </div>
+</div>
+
 <div class="scr" id="s-budget">
   <div class="bgt-hdr">
     <div class="shr-row" style="margin-bottom:4px;">
@@ -2673,7 +2695,8 @@ function renderTripList(){
     ${t.isPublic?`<div class="trip-copy-cnt"><i class="ti ti-copy"></i> ${t.copiedCount||0}명이 복사했어요</div>`:''}
     <div class="trip-acts" onclick="event.stopPropagation()">
       <button class="t-btn pri" onclick="openTrip('${t.id}')"><i class="ti ti-edit"></i> 편집</button>
-      <button class="t-btn${t.isPublic?' teal':''}" onclick="quickTogglePub('${t.id}')"><i class="ti ti-${t.isPublic?'eye-off':'world'}"></i> ${t.isPublic?'공개 중':'공유하기'}</button>
+      <button class="t-btn${(t.rating||t.review||t.visited)?' amber':''}" onclick="openReview('${t.id}')"><i class="ti ti-star"></i> ${(t.rating||t.review||t.visited)?'후기 수정':'후기'}</button>
+      <button class="t-btn${t.isPublic?' teal':''}" onclick="quickTogglePub('${t.id}')"><i class="ti ti-${t.isPublic?'eye-off':'world'}"></i> ${t.isPublic?'공개 중':'공유'}</button>
       <button class="t-btn" onclick="shareTrip('${t.id}')"><i class="ti ti-share"></i></button>
       <button class="t-btn" onclick="delTrip('${t.id}')"><i class="ti ti-trash"></i></button>
     </div>
@@ -2690,7 +2713,7 @@ async function quickTogglePub(id){
   }
   toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');
 }
-function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();renderReview();setNav('nb-my');}
+function openTrip(id){currentTripId=id;currentDayIdx=0;const t=trips.find(x=>x.id===id);if(!t)return;document.getElementById('detailNameInp').value=t.name;document.getElementById('detailMetaRow').innerHTML=`<span><i class="ti ti-map-pin" style="font-size:11px;"></i> ${t.dest}</span><span><i class="ti ti-calendar" style="font-size:11px;"></i> ${fmtDate(t.start)} ~ ${fmtDate(t.end)}</span><span><i class="ti ti-users" style="font-size:11px;"></i> ${t.companion||''}</span>`;const tog=document.getElementById('publicToggle');tog.classList.toggle('on',!!t.isPublic);['fl','ht'].forEach(s=>{document.getElementById(s+'-body').classList.remove('open');document.getElementById(s+'-toggle').classList.remove('open');});renderFlights();renderHotels();renderDayTabs();renderDayEdit();showScr('s-detail');renderChecklist();setNav('nb-my');}
 function getTrip(){return trips.find(x=>x.id===currentTripId);}
 async function togglePublic(){const t=getTrip();if(!t)return;t.isPublic=!t.isPublic;saveTD();document.getElementById('publicToggle').classList.toggle('on',t.isPublic);if(currentUser){const {data,error}=await sb.from('trips').update({is_public:t.isPublic}).eq('id',t.id).select();if(error){}}toast(t.isPublic?'🌏 여행 피드에 공개됐어요!':'공개가 중지됐어요');}
 function saveDetailBack(){const t=getTrip();if(t){t.name=document.getElementById('detailNameInp').value||t.name;saveTD();}toast('💾 저장 완료!');goMyTrips();}
@@ -3914,37 +3937,50 @@ function delFeedComment(commentId){
 }
 
 
-/* ══ 나의 여행기 (후기·별점) ══ */
+
+/* ══ 나의 여행기 화면 ══ */
+var _reviewTripId=null;
+function openReview(id){
+  _reviewTripId=id;
+  var t=trips.find(function(x){return x.id===id;});
+  if(!t)return;
+  document.getElementById('rvTripName').textContent='"'+t.name+'"';
+  showScr('s-review');setNav('nb-my');
+  renderReview();
+}
+function getReviewTrip(){ return trips.find(function(x){return x.id===_reviewTripId;}); }
 function renderReview(){
-  var t=getTrip();if(!t)return;
-  // 별점
+  var t=getReviewTrip();if(!t)return;
   var stars=document.querySelectorAll('#rvStars .rv-star');
   stars.forEach(function(s,i){s.classList.toggle('on',i<(t.rating||0));});
-  // 후기
+  var rt=document.getElementById('rvRatingTxt');
+  if(rt){var msgs=['','별로였어요','아쉬웠어요','괜찮았어요','좋았어요','최고였어요!'];rt.textContent=t.rating?msgs[t.rating]:'';}
   var inp=document.getElementById('rvReviewInput');
   if(inp)inp.value=t.review||'';
-  // 다녀옴 토글
   var tg=document.getElementById('rvVisitedToggle');
   if(tg)tg.classList.toggle('on',!!t.visited);
 }
 function setRating(n){
-  var t=getTrip();if(!t)return;
-  t.rating=(t.rating===n)?0:n;  // 같은 별 다시 누르면 해제
+  var t=getReviewTrip();if(!t)return;
+  t.rating=(t.rating===n)?0:n;
   renderReview();
-  saveTD();
-}
-function saveReview(){
-  var t=getTrip();if(!t)return;
-  var inp=document.getElementById('rvReviewInput');
-  t.review=inp?inp.value:'';
-  saveTD();
 }
 function toggleVisited(){
-  var t=getTrip();if(!t)return;
+  var t=getReviewTrip();if(!t)return;
   t.visited=!t.visited;
   renderReview();
+}
+function saveReviewAndExit(){
+  var t=getReviewTrip();if(!t)return;
+  var inp=document.getElementById('rvReviewInput');
+  t.review=inp?inp.value:'';
+  // DB 저장
+  if(currentUser&&/^[0-9a-f]{8}-/.test(String(t.id))){
+    sb.from('trips').update({rating:t.rating||0,review:t.review||'',visited:!!t.visited}).eq('id',t.id);
+  }
   saveTD();
-  if(t.visited)toast('✈️ 다녀온 여행으로 표시했어요');
+  toast('📔 여행기가 저장됐어요!');
+  setTimeout(function(){goMyTrips();},500);
 }
 
 </script>
