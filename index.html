@@ -1289,6 +1289,16 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <div class="shr-ttl">MY 여행</div>
     <div class="shr-sub">내 여행·플랜·토핑을 한눈에 관리해요</div>
   </div>
+  <!-- 비로그인 게이트 -->
+  <div id="myLoginGate" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 30px;text-align:center;">
+    <div style="font-size:54px;margin-bottom:16px;">🍕</div>
+    <div style="font-family:'Black Han Sans',sans-serif;font-size:19px;color:var(--dk);margin-bottom:8px;">로그인하고 시작하세요</div>
+    <div style="font-size:13px;color:var(--gy);line-height:1.7;margin-bottom:24px;">내 여행을 저장하고, 어디서든 이어가고<br>친구들과 공유할 수 있어요</div>
+    <button onclick="openAuth()" style="background:linear-gradient(135deg,#FF5F1F,#FF8C42);color:white;border:none;border-radius:14px;padding:14px 36px;font-family:'Black Han Sans',sans-serif;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(255,95,31,.3);"><i class="ti ti-login"></i> 로그인 / 회원가입</button>
+    <div style="font-size:12px;color:var(--gy);margin-top:18px;">로그인 없이도 <span style="color:var(--or);font-weight:600;cursor:pointer;" onclick="goSearch()">여행 둘러보기</span>는 가능해요</div>
+  </div>
+  <!-- 로그인 후 컨텐츠 -->
+  <div id="myContent">
   <div class="stats-title"><i class="ti ti-chart-bar"></i> 나의 여행 기록</div>
   <div class="stats-row" id="statsRow"></div>
   <!-- 내 여행 지도 -->
@@ -1321,6 +1331,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <div class="mgc-cnt">바로 계산</div>
     </div>
   </div>
+</div><!-- /myContent -->
 </div>
 
 <!-- MY TRIPS LIST -->
@@ -1619,10 +1630,13 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <div id="fdDays"></div>
     <div class="fd-section-ttl" style="margin-top:18px;">💬 댓글 <span id="fdCommentCount" style="color:var(--gy);font-size:12px;font-weight:400;"></span></div>
     <div id="fdComments"></div>
-    <div class="ftc-comment-input-wrap" style="margin-top:10px;">
+    <div class="ftc-comment-input-wrap" id="fdCommentInputWrap" style="margin-top:10px;">
       <div class="ftc-comment-av" id="fdMyAv">나</div>
       <input class="ftc-comment-input" id="fdCommentInput" type="text" placeholder="이 여행에 댓글 달기..." maxlength="100" onkeydown="if(event.key==='Enter')submitFeedComment()"/>
       <button class="ftc-comment-send" onclick="submitFeedComment()"><i class="ti ti-send"></i></button>
+    </div>
+    <div id="fdCommentLoginHint" style="display:none;margin-top:10px;text-align:center;padding:12px;background:#F5F3EF;border-radius:12px;font-size:12px;color:var(--gy);">
+      💬 댓글을 남기려면 <span style="color:var(--or);font-weight:700;cursor:pointer;" onclick="openAuth()">로그인</span>이 필요해요
     </div>
     <div style="height:90px;"></div>
   </div>
@@ -2055,7 +2069,22 @@ function goSearch(){
 }
 function goSwipe(){if(!query){toast('먼저 여행을 입력해주세요');return;}showScr('s-swipe');setNav('nb-search');}
 function goPlanNav(){if(!currentPlan){toast('먼저 플랜을 생성해주세요');return;}showScr('s-plan');setNav('nb-my');setTimeout(()=>{if(map)map.invalidateSize();},100);}
-function goMy(){showScr('s-my');setNav('nb-my');setMenuActive('mi-my');document.getElementById('myTripsCnt').textContent=trips.length+'개 여행';document.getElementById('myPlanCnt').textContent=currentPlan?'플랜 보기':'플랜 없음';renderStats();renderMyTravelMap();}
+function goMy(){
+  setNav('nb-my');setMenuActive('mi-my');
+  // 로그인 안 했으면 로그인 유도 화면
+  if(!currentUser){
+    showScr('s-my');
+    document.getElementById('myLoginGate').style.display='flex';
+    document.getElementById('myContent').style.display='none';
+    return;
+  }
+  document.getElementById('myLoginGate').style.display='none';
+  document.getElementById('myContent').style.display='block';
+  showScr('s-my');
+  document.getElementById('myTripsCnt').textContent=trips.length+'개 여행';
+  document.getElementById('myPlanCnt').textContent=currentPlan?'플랜 보기':'플랜 없음';
+  renderStats();renderMyTravelMap();
+}
 function goMyTrips(){showScr('s-mytrips');setNav('nb-my');setMenuActive('msi-trips');renderTripList();}
 function goNewTrip(){['newName','newDest','newCompanion'].forEach(id=>document.getElementById(id).value='');['newStart','newEnd'].forEach(id=>document.getElementById(id).value='');document.getElementById('createBtn').disabled=true;showScr('s-newtrip');setNav('nb-my');}
 function goBudget(){showScr('s-budget');setNav('nb-my');setMenuActive('msi-budget');renderCatSliders();calcBudget();}
@@ -2725,6 +2754,7 @@ document.getElementById('subBtn').disabled=true;
 function setMF(el){document.querySelectorAll('.mf-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');mfFilter=el.dataset.dest;renderMarket();}
 function toggleMarketLike(id,e){
   e.stopPropagation();
+  if(!currentUser){toast('❤️ 좋아요는 로그인 후 가능해요');openAuth();return;}
   var nowLiked=!marketLikes[id];
   if(nowLiked){marketLikes[id]=1;}else{delete marketLikes[id];}
   saveMarketLikes();
@@ -3308,6 +3338,13 @@ function getFeedComments(id){
 
 function renderFeedComments(){
   if(!_currentFeed)return;
+  // 비로그인: 입력창 숨기고 안내만
+  var inWrap=document.getElementById('fdCommentInputWrap');
+  var inHint=document.getElementById('fdCommentLoginHint');
+  if(inWrap&&inHint){
+    if(currentUser){inWrap.style.display='flex';inHint.style.display='none';}
+    else{inWrap.style.display='none';inHint.style.display='block';}
+  }
   // DB 댓글 비동기 로드 후 다시 렌더 (진짜 여행만)
   if(/^[0-9a-f]{8}-/.test(String(_currentFeed.id)) && !_feedCommentsCache['_loaded_'+_currentFeed.id]){
     _feedCommentsCache['_loaded_'+_currentFeed.id]=true;
