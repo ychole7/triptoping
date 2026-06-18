@@ -1722,6 +1722,51 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 
 
+
+/* ══ SUPABASE 커뮤니티 토핑 ══ */
+var _dbToppings=[];  // DB에서 불러온 커뮤니티 토핑
+
+async function loadCommToppings(){
+  try{
+    const {data,error}=await sb.from('community_toppings').select('*').limit(100);
+    if(error)throw error;
+    _dbToppings=(data||[]).map(function(r){
+      return{id:r.id,emoji:r.emoji||'🍕',name:r.name,desc:r.description||'',dests:r.dests||[],likes:r.likes||0,author:'여행자',ts:new Date(r.created_at).getTime(),userId:r.user_id,isMine:currentUser&&r.user_id===currentUser.id};
+    });
+    // 작성자 이름 채우기
+    try{
+      var uids=[...new Set(_dbToppings.map(function(t){return t.userId;}))];
+      if(uids.length){
+        const {data:profs}=await sb.from('profiles').select('id,name').in('id',uids);
+        var pmap={};(profs||[]).forEach(function(p){pmap[p.id]=p.name;});
+        _dbToppings.forEach(function(t){if(pmap[t.userId])t.author=pmap[t.userId];});
+      }
+    }catch(pe){}
+  }catch(e){_dbToppings=[];}
+}
+
+async function saveToppingToDB(t){
+  if(!currentUser)return null;
+  try{
+    const {data,error}=await sb.from('community_toppings').insert({
+      user_id:currentUser.id, emoji:t.emoji, name:t.name,
+      description:t.desc, dests:t.dests||[]
+    }).select().single();
+    if(error)throw error;
+    return{id:data.id,emoji:data.emoji,name:data.name,desc:data.description,dests:data.dests||[],likes:0,author:currentUser.name,ts:Date.now(),userId:data.user_id,isMine:true};
+  }catch(e){console.error(e);return null;}
+}
+
+async function updateToppingInDB(id,t){
+  if(!currentUser)return;
+  try{ await sb.from('community_toppings').update({emoji:t.emoji,name:t.name,description:t.desc,dests:t.dests||[]}).eq('id',id); }catch(e){}
+}
+
+async function delToppingFromDB(id){
+  if(!currentUser)return;
+  try{ await sb.from('community_toppings').delete().eq('id',id); }catch(e){}
+}
+
 /* ══ SUPABASE 댓글 ══ */
 var _feedCommentsCache={};  // trip_id → 댓글 배열
 
@@ -2099,6 +2144,7 @@ function backFromCommTops(){
 }
 var _createTopFrom='comm';
 function goCreateTopping(from){
+  if(!currentUser){toast('🍕 토핑을 만들려면 로그인이 필요해요');openAuth();return;}
   _createTopFrom=from||'my';
   _editingTopId=null;
   var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
@@ -2710,6 +2756,17 @@ function submitComment(id){
   toast('💬 댓글이 등록됐어요!');
 }
 function renderCommFull(){
+  // DB 토핑 로드 후 다시 렌더
+  if(!renderCommFull._loaded){
+    renderCommFull._loaded=true;
+    loadCommToppings().then(function(){
+      // DB 토핑을 commTops에 병합 (중복 제거)
+      _dbToppings.forEach(function(t){
+        if(!commTops.some(function(x){return x.id===t.id;}))commTops.unshift(t);
+      });
+      renderCommFull();
+    });
+  }
   const sorted=[...commTops].sort((a,b)=>commSort==='like'?b.likes-a.likes:b.ts-a.ts);
   document.getElementById('commCount').textContent=`총 ${sorted.length}개 커뮤니티 토핑`;const isLk=commSort==='like';
   document.getElementById('fullTopList').innerHTML=sorted.map((t,i)=>{
@@ -2734,20 +2791,37 @@ function toggleFT(id){const t=commTops.find(x=>x.id===id);if(!t)return;const top
 function selEm(el,em){document.querySelectorAll('.em-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');selEmoji=em;updPrev();}
 function toggleDP(el){el.classList.toggle('sel');selDests=Array.from(document.querySelectorAll('.dp-opt.sel')).map(e=>e.textContent.replace(/^.\s/,''));}
 function updPrev(){const name=document.getElementById('cfName').value||'토핑 이름',desc=document.getElementById('cfDesc').value||'설명을 입력하세요';document.getElementById('prevEm').textContent=selEmoji;document.getElementById('prevName').textContent=name;document.getElementById('prevDesc').textContent=desc;document.getElementById('subBtn').disabled=!document.getElementById('cfName').value.trim()||!document.getElementById('cfDesc').value.trim();}
-function submitTop(){const name=document.getElementById('cfName').value.trim(),desc=document.getElementById('cfDesc').value.trim();if(!name||!desc)return;
-  // 수정 모드면 기존 토핑 업데이트
+function submitTop(){
+  if(!currentUser){toast('🍕 로그인이 필요해요');openAuth();return;}
+  const name=document.getElementById('cfName').value.trim(),desc=document.getElementById('cfDesc').value.trim();
+  if(!name||!desc)return;
+  // 수정 모드: DB 업데이트
   if(_editingTopId){
     var ex=commTops.find(function(x){return x.id===_editingTopId;});
     if(ex){ex.name=name;ex.desc=desc;ex.emoji=selEmoji;ex.dests=selDests;}
-    saveMyTops();
-    var _eid=_editingTopId;_editingTopId=null;
+    var eid=_editingTopId;
+    if(/^[0-9a-f]{8}-/.test(String(eid))){updateToppingInDB(eid,{emoji:selEmoji,name:name,desc:desc,dests:selDests});}
+    else{saveMyTops();}
+    _editingTopId=null;
     var btn=document.getElementById('subBtn');if(btn)btn.innerHTML='<i class="ti ti-pizza"></i> 커뮤니티에 올리기';
     document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
     selEmoji='🍕';selDests=[];updPrev();
     toast('✏️ 수정됐어요!');setTimeout(function(){goMyTops();},600);
     return;
   }
-  const nt={id:'u'+Date.now(),emoji:selEmoji,name,desc,author:currentUser?currentUser.name:'나',likes:0,dests:selDests,ts:Date.now()};commTops.unshift(nt);saveMyTops();document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';document.querySelectorAll('.em-opt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.dp-opt').forEach(e=>e.classList.remove('sel'));selEmoji='🍕';selDests=[];updPrev();toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');setTimeout(()=>goMyTops(),600);}
+  // 신규: DB 저장
+  toast('올리는 중...');
+  saveToppingToDB({emoji:selEmoji,name:name,desc:desc,dests:selDests}).then(function(saved){
+    if(saved){
+      commTops.unshift(saved);
+      _dbToppings.unshift(saved);
+      document.getElementById('cfName').value='';document.getElementById('cfDesc').value='';
+      selEmoji='🍕';selDests=[];updPrev();
+      toast('🍕 "'+name+'" 커뮤니티에 올라갔어요!');
+      setTimeout(function(){goMyTops();},600);
+    }else{toast('⚠️ 등록 실패');}
+  });
+}
 document.getElementById('subBtn').disabled=true;
 
 /* ══ MARKET ══ */
@@ -2890,8 +2964,12 @@ async function syncAuthUser(){
       if(prof){if(prof.name)name=prof.name;if(prof.avatar)avatar=prof.avatar;}
     }catch(e){}
     currentUser={id:user.id,name,email:user.email,avatar,provider:'email'};
-    // 로그인되면 내 여행 불러오기
+    // 로그인되면 내 여행 + 토핑 불러오기
     await loadTripsFromDB();
+    await loadCommToppings();
+    _dbToppings.forEach(function(t){
+      if(!commTops.some(function(x){return x.id===t.id;}))commTops.unshift(t);
+    });
     if(typeof renderTripList==='function')renderTripList();
     if(typeof renderMyTravelMap==='function'){var mm=document.getElementById('myTravelMap');if(mm)renderMyTravelMap();}
   }else{
@@ -3563,34 +3641,7 @@ function loadMyTops(){
     });
   }catch(e){}
 }
-function isMyTop(t){ return t && String(t.id).indexOf('u')===0; }
-
-/* ══ 도시 좌표 테이블 (직접 만든 여행 핀 표시용) ══ */
-const CITY_COORDS={
-  // 국내
-  '서울':[37.5665,126.9780],'부산':[35.1796,129.0756],'제주':[33.4996,126.5312],'제주도':[33.4996,126.5312],
-  '강릉':[37.7519,128.8761],'속초':[38.2070,128.5918],'경주':[35.8562,129.2247],'전주':[35.8242,127.1480],
-  '여수':[34.7604,127.6622],'대구':[35.8714,128.6014],'인천':[37.4563,126.7052],'광주':[35.1595,126.8526],
-  '대전':[36.3504,127.3845],'울산':[35.5384,129.3114],'춘천':[37.8813,127.7300],'포항':[36.0190,129.3435],
-  '통영':[34.8544,128.4331],'안동':[36.5684,128.7294],'평창':[37.3705,128.3900],'가평':[37.8315,127.5105],
-  '남해':[34.8377,127.8924],'거제':[34.8806,128.6211],'담양':[35.3211,126.9882],'순천':[34.9506,127.4872],
-  // 일본
-  '도쿄':[35.6762,139.6503],'오사카':[34.6937,135.5023],'교토':[35.0116,135.7681],'후쿠오카':[33.5904,130.4017],
-  '삿포로':[43.0618,141.3545],'홋카이도':[43.0618,141.3545],'나고야':[35.1815,136.9066],'오키나와':[26.2124,127.6809],
-  '벳푸':[33.2846,131.4914],'고베':[34.6901,135.1955],
-  // 동남아
-  '나트랑':[12.2388,109.1967],'다낭':[16.0544,108.2022],'호치민':[10.8231,106.6297],'하노이':[21.0285,105.8542],
-  '방콕':[13.7563,100.5018],'치앙마이':[18.7883,98.9853],'푸켓':[7.8804,98.3923],'세부':[10.3157,123.8854],
-  '보라카이':[11.9674,121.9248],'발리':[-8.3405,115.0920],'싱가포르':[1.3521,103.8198],'쿠알라룸푸르':[3.1390,101.6869],
-  '코타키나발루':[5.9804,116.0735],'푸꾸옥':[10.2270,103.9640],
-  // 동아시아·기타
-  '타이베이':[25.0330,121.5654],'대만':[25.0330,121.5654],'홍콩':[22.3193,114.1694],'마카오':[22.1987,113.5439],
-  '괌':[13.4443,144.7937],'사이판':[15.1850,145.7468],'세인트':[15.1850,145.7468],
-  // 미주·유럽·기타
-  '파리':[48.8566,2.3522],'런던':[51.5074,-0.1278],'로마':[41.9028,12.4964],'바르셀로나':[41.3851,2.1734],
-  '뉴욕':[40.7128,-74.0060],'LA':[34.0522,-118.2437],'로스앤젤레스':[34.0522,-118.2437],'하와이':[21.3099,-157.8581],
-  '시드니':[-33.8688,151.2093],'두바이':[25.2048,55.2708],'프라하':[50.0755,14.4378],'스위스':[46.8182,8.2275]
-};
+function isMyTop(t){ return t && (String(t.id).indexOf('u')===0 || t.isMine===true || (currentUser&&t.userId===currentUser.id)); };
 
 // 목적지 문자열에서 좌표 찾기
 function findCityCoords(dest){
@@ -3714,6 +3765,7 @@ function editMyTop(id){
 
 /* ══ 나만의 토핑 목록 (MY) ══ */
 function goMyTops(){
+  if(!currentUser){toast('🍕 로그인이 필요해요');openAuth();return;}
   showScr('s-mytops');setNav('nb-my');
   renderMyTopsList();
 }
@@ -3744,7 +3796,9 @@ function renderMyTopsList(){
 // MY 목록에서 삭제 (삭제 후 목록 갱신)
 function delMyTopFromList(id){
   if(!confirm('이 토핑을 삭제할까요?'))return;
+  if(/^[0-9a-f]{8}-/.test(String(id))){delToppingFromDB(id);}else{saveMyTops();}
   commTops=commTops.filter(function(t){return t.id!==id;});
+  _dbToppings=_dbToppings.filter(function(t){return t.id!==id;});
   myTops=myTops.filter(function(t){return getTopKey(t)!==id;});
   saveMyTops();
   renderMyTopsList();renderSelBar();
