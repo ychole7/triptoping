@@ -1981,7 +1981,11 @@ async function saveTripToDB(t){
       if(error)throw error;
       return dbToTrip(data);
     }
-  }catch(e){console.error('여행 저장 실패',e);toast('⚠️ 저장 실패');return null;}
+  }catch(e){
+    console.error('여행 저장 실패',e);
+    // 컬럼 없음 등의 에러면 조용히 (편집은 계속 가능)
+    return null;
+  }
 }
 
 // 여행 삭제
