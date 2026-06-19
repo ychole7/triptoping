@@ -2761,27 +2761,24 @@ function tryRepairJson(str){
 }
 
 async function genAiPlan(q){
-  const sys=`너는 10년 경력의 현지 여행 가이드야. 여행자의 요청과 취향(토핑)을 분석해서, 실제로 다녀온 것처럼 생생하고 현실적인 맞춤 일정을 짜줘.
+  const sys=`너는 현지 여행 가이드야. 요청과 취향(토핑)에 맞는 실용적인 일정을 짜줘.
 
-[일정 작성 규칙]
-1. 동선 최적화: 하루 안에서는 지리적으로 가까운 장소끼리 묶어. 이리저리 왔다갔다하지 않게 한 방향으로 흐르듯 배치해.
-2. 현실적 시간 배분: 오전(관광)→점심(맛집)→오후(관광/액티비티)→저녁(맛집/야경) 흐름. 이동시간·식사시간 고려해서 하루 4~5개 항목.
-3. 균형: 명소만 넣지 말고 맛집·카페·휴식·로컬경험을 골고루 섞어. 매 끼니(점심·저녁)는 구체적인 식당이나 음식으로.
-4. 취향 반영: 적용된 토핑을 일정에 적극 반영해. (예: '인스타 감성' → 포토스팟·예쁜 카페, '맛집' → 현지 유명 맛집)
-5. 동행 맞춤: 아이 동반이면 키즈존·놀이공원, 커플이면 로맨틱 스팟, 혼행이면 편하게 즐길 곳.
-6. desc는 단순 설명이 아니라 "왜 가는지 + 실용 팁"을 한 문장에. (예: "현지인 줄서는 쌀국수집, 오픈런 추천")
-7. 실제 존재하는 장소만. 위도·경도(lat,lng) 정확히.
-8. ★기간 정확히 지키기★: 요청에 명시된 박/일 수를 반드시 지켜. "1박 2일"이면 days는 정확히 2개, "3박 4일"이면 4개. 임의로 늘리거나 줄이지 마.
+규칙:
+- 동선 최적화(가까운 곳끼리 묶기), 하루 3~4개 항목
+- 오전관광→점심맛집→오후관광→저녁 흐름
+- 취향 토핑 반영, 동행 맞춤
+- desc는 짧게(왜 가는지 한 줄)
+- ★기간 정확히: "1박2일"이면 days 2개, "3박4일"이면 4개★
 
-순수 JSON만 출력(설명·마크다운 없이):
-{"title":"도시 N박N일 여행","destination":"도시, 국가","companion":"동행","duration":"N박 N일","days":[{"title":"Day N · 테마","items":[{"time":"오전 9시","name":"장소명","desc":"왜+팁","lat":35.6,"lng":139.7}]}]}`;
+순수 JSON만 출력(설명 없이):
+{"title":"도시 N박N일 여행","destination":"도시, 국가","companion":"동행","duration":"N박 N일","days":[{"title":"Day1 · 테마","items":[{"time":"오전 9시","name":"장소","desc":"한줄","lat":35.6,"lng":139.7}]}]}`;
   const toppingTxt=myTops.length?myTops.map(t=>t.title||t.name).join(', '):'특별한 취향 없음 (대중적인 일정으로)';
   // 요청에서 기간 파싱
   var durationHint='';
   var nm=q.match(/(\d+)\s*박\s*(\d+)\s*일/);
   if(nm){durationHint='\n★중요: 정확히 '+nm[1]+'박 '+nm[2]+'일 = days 배열 '+nm[2]+'개로 만들어줘.';}
   else{var dm=q.match(/(\d+)\s*일/);if(dm){durationHint='\n★중요: 정확히 '+dm[1]+'일 = days 배열 '+dm[1]+'개로 만들어줘.';}}
-  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+durationHint+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 3500);
+  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+durationHint+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 2500);
   let clean=raw.replace(/```json|```/g,'').trim();
   // JSON 객체만 추출 (앞뒤 잡텍스트 제거)
   const s=clean.indexOf('{'), e=clean.lastIndexOf('}');
