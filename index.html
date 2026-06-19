@@ -2472,9 +2472,17 @@ async function fetchAiTops(q){
 순수 JSON만: {"toppings":[{"emoji":"🎡","name":"빈펄랜드","desc":"케이블카+워터파크"}]}`;
     const raw=await callClaude(sys, `여행: "${q}"`, 900);
     let clean=raw.replace(/```json|```/g,'').trim();
-    const s=clean.indexOf('{'),e=clean.lastIndexOf('}');
-    if(s>=0&&e>s)clean=clean.slice(s,e+1);
-    const parsed=JSON.parse(clean);
+    const s=clean.indexOf('{');
+    if(s>=0)clean=clean.slice(s);
+    let parsed;
+    try{
+      const e=clean.lastIndexOf('}');
+      parsed=JSON.parse(e>0?clean.slice(0,e+1):clean);
+    }catch(parseErr){
+      // 잘린 JSON 복구 시도: 미완성 부분 잘라내고 괄호 맞추기
+      parsed=tryRepairJson(clean);
+      if(!parsed)throw parseErr;
+    }
     if(parsed&&parsed.toppings){const tops=parsed.toppings.map((t,i)=>({...t,id:'ai_'+i,key:'ai_'+t.name,isAI:true}));aiCache[q]=tops;aiGenTops=tops;renderAiSwipeCards(tops);document.getElementById('aiTopLbl').textContent=' AI 맞춤 토핑';}
     else fallbackAi(q);
   }catch(e){fallbackAi(q);}
@@ -2707,7 +2715,7 @@ function triggerGenPlan(){
   }).catch(e=>{
     clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
     console.error('AI 생성 실패:', e);
-    toast('⚠️ AI 생성 실패: '+(e.message||e).toString().slice(0,60));
+    toast('일정을 불러오는 데 시간이 걸려요. 다시 시도해주세요');
     renderPlan(getPlan(query));
   });
 }
@@ -2720,6 +2728,31 @@ function isMatchedCity(q){
 }
 
 // AI 플랜 생성
+
+// 잘린 JSON 복구 (AI 응답이 토큰 제한으로 끊겼을 때)
+function tryRepairJson(str){
+  // 마지막 완전한 객체까지만 살리기
+  for(var end=str.length;end>0;end--){
+    var test=str.slice(0,end);
+    // 열린 괄호 수 세서 닫기 보충
+    var openB=(test.match(/\{/g)||[]).length;
+    var closeB=(test.match(/\}/g)||[]).length;
+    var openA=(test.match(/\[/g)||[]).length;
+    var closeA=(test.match(/\]/g)||[]).length;
+    // 마지막이 콤마나 미완성이면 정리
+    var fixed=test.replace(/,\s*$/,'');
+    // 부족한 닫는 괄호 추가
+    for(var i=0;i<openB-closeB;i++)fixed+='}';
+    for(var j=0;j<openA-closeA;j++)fixed+=']';
+    // 배열/객체 순서 맞춰 닫기 (간단히 ] 먼저, } 나중)
+    try{
+      var p=JSON.parse(fixed);
+      if(p&&p.days&&p.days.length)return p;  // days가 있으면 유효
+    }catch(e){}
+  }
+  return null;
+}
+
 async function genAiPlan(q){
   const sys=`너는 10년 경력의 현지 여행 가이드야. 여행자의 요청과 취향(토핑)을 분석해서, 실제로 다녀온 것처럼 생생하고 현실적인 맞춤 일정을 짜줘.
 
@@ -2735,7 +2768,7 @@ async function genAiPlan(q){
 순수 JSON만 출력(설명·마크다운 없이):
 {"title":"도시 N박N일 여행","destination":"도시, 국가","companion":"동행","duration":"N박 N일","days":[{"title":"Day N · 테마","items":[{"time":"오전 9시","name":"장소명","desc":"왜+팁","lat":35.6,"lng":139.7}]}]}`;
   const toppingTxt=myTops.length?myTops.map(t=>t.title||t.name).join(', '):'특별한 취향 없음 (대중적인 일정으로)';
-  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 3000);
+  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 5000);
   let clean=raw.replace(/```json|```/g,'').trim();
   // JSON 객체만 추출 (앞뒤 잡텍스트 제거)
   const s=clean.indexOf('{'), e=clean.lastIndexOf('}');
