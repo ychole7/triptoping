@@ -2708,16 +2708,23 @@ function triggerGenPlan(){
   document.getElementById(STS[0]).classList.add('on');
   const iv=setInterval(()=>{if(si<STS.length-1){document.getElementById(STS[si]).className='step dn';si++;document.getElementById(STS[si]).classList.add('on');}},700);
 
-  // 항상 AI로 생성 (정확한 맞춤 플랜). 실패 시에만 샘플 폴백
-  genAiPlan(query).then(plan=>{
-    clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
-    renderPlan(plan);
-  }).catch(e=>{
-    clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
-    console.error('AI 생성 실패:', e);
-    toast('일정을 불러오는 데 시간이 걸려요. 다시 시도해주세요');
-    renderPlan(getPlan(query));
-  });
+  // 샘플이 있는 도시는 빠르게 샘플로, 없으면 AI 생성
+  const sample=getSamplePlan(query);
+  if(sample){
+    // 미리 만든 샘플 (빠름)
+    setTimeout(()=>{clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');renderPlan(sample);},1500);
+  }else{
+    // AI 생성 (맞춤)
+    genAiPlan(query).then(plan=>{
+      clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
+      renderPlan(plan);
+    }).catch(e=>{
+      clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
+      console.error('AI 생성 실패:', e);
+      toast('일정을 불러오는 데 시간이 걸려요. 다시 시도해주세요');
+      renderPlan(makeEmptyPlan(query));
+    });
+  }
 }
 
 // 매칭 도시 판별 (기존 9개)
@@ -2764,11 +2771,17 @@ async function genAiPlan(q){
 5. 동행 맞춤: 아이 동반이면 키즈존·놀이공원, 커플이면 로맨틱 스팟, 혼행이면 편하게 즐길 곳.
 6. desc는 단순 설명이 아니라 "왜 가는지 + 실용 팁"을 한 문장에. (예: "현지인 줄서는 쌀국수집, 오픈런 추천")
 7. 실제 존재하는 장소만. 위도·경도(lat,lng) 정확히.
+8. ★기간 정확히 지키기★: 요청에 명시된 박/일 수를 반드시 지켜. "1박 2일"이면 days는 정확히 2개, "3박 4일"이면 4개. 임의로 늘리거나 줄이지 마.
 
 순수 JSON만 출력(설명·마크다운 없이):
 {"title":"도시 N박N일 여행","destination":"도시, 국가","companion":"동행","duration":"N박 N일","days":[{"title":"Day N · 테마","items":[{"time":"오전 9시","name":"장소명","desc":"왜+팁","lat":35.6,"lng":139.7}]}]}`;
   const toppingTxt=myTops.length?myTops.map(t=>t.title||t.name).join(', '):'특별한 취향 없음 (대중적인 일정으로)';
-  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 5000);
+  // 요청에서 기간 파싱
+  var durationHint='';
+  var nm=q.match(/(\d+)\s*박\s*(\d+)\s*일/);
+  if(nm){durationHint='\n★중요: 정확히 '+nm[1]+'박 '+nm[2]+'일 = days 배열 '+nm[2]+'개로 만들어줘.';}
+  else{var dm=q.match(/(\d+)\s*일/);if(dm){durationHint='\n★중요: 정확히 '+dm[1]+'일 = days 배열 '+dm[1]+'개로 만들어줘.';}}
+  const raw=await callClaude(sys, '여행 요청: "'+q+'"\n적용된 취향 토핑: '+toppingTxt+durationHint+'\n\n위 요청과 취향을 충실히 반영해서 동선이 매끄러운 일정을 만들어줘.', 3500);
   let clean=raw.replace(/```json|```/g,'').trim();
   // JSON 객체만 추출 (앞뒤 잡텍스트 제거)
   const s=clean.indexOf('{'), e=clean.lastIndexOf('}');
@@ -2777,6 +2790,26 @@ async function genAiPlan(q){
   (parsed.days||[]).forEach(d=>{(d.items||[]).forEach(it=>{ if(!it.tags)it.tags=[]; });});
   return parsed;
 }
+
+// 진짜 존재하는 샘플만 반환 (없으면 null → AI 생성)
+function getSamplePlan(q){
+  var sample=null;
+  if(q.includes('나트랑'))sample=PLANS['나트랑'];
+  else if(q.includes('도쿄'))sample=PLANS['도쿄'];
+  else if(q.includes('방콕'))sample=PLANS['방콕'];
+  if(!sample)return null;
+  // 기간이 명시됐고 샘플과 다르면 → AI로 (정확한 기간 위해)
+  var nm=q.match(/(\d+)\s*박\s*(\d+)\s*일/);
+  if(nm){
+    var reqDays=parseInt(nm[2]);
+    if((sample.days||[]).length!==reqDays)return null;  // 기간 다름 → AI
+  }else{
+    var dm=q.match(/(\d+)\s*일/);
+    if(dm){var rd=parseInt(dm[1]);if((sample.days||[]).length!==rd)return null;}
+  }
+  return sample;
+}
+
 function getPlan(q){const l=q.toLowerCase();
   // 정확히 일치하는 샘플만 (AI 실패 시 폴백용)
   if(l.includes('나트랑'))return PLANS['나트랑'];
