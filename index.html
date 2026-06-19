@@ -3167,7 +3167,20 @@ async function syncAuthUser(){
 function openProfile(){if(!currentUser){openAuth();return;}document.getElementById('profileAvLg').textContent=currentUser.avatar||'😊';document.getElementById('profileNameLg').textContent=currentUser.name;document.getElementById('profileEmailLg').textContent=currentUser.email;document.getElementById('statTrips').textContent=trips.length;document.getElementById('statPublic').textContent=trips.filter(t=>t.isPublic).length;document.getElementById('statCopied').textContent=trips.reduce((a,t)=>a+(t.copiedCount||0),0);document.getElementById('profileOverlay').style.display='flex';}
 function closeProfile(){document.getElementById('profileOverlay').style.display='none';}
 function closeProfileBg(e){if(e.target===document.getElementById('profileOverlay'))closeProfile();}
-async function logoutUser(){if(!confirm('로그아웃 하시겠어요?'))return;await sb.auth.signOut();currentUser=null;trips=[];closeProfile();renderUserBtn();renderMenuUser();if(typeof renderTripList==='function')renderTripList();toast('또 만나요 🍕');}
+async function logoutUser(){
+  if(!confirm('로그아웃 하시겠어요?'))return;
+  await sb.auth.signOut();
+  currentUser=null;trips=[];
+  // 내 DB 토핑 제거 (commTops에서 UUID 토핑 빼고 샘플만 남김)
+  _dbToppings=[];
+  commTops=commTops.filter(function(t){return !(/^[0-9a-f]{8}-/.test(String(t.id)));});
+  commTops.forEach(function(t){t.isMine=false;});
+  closeProfile();renderUserBtn();renderMenuUser();
+  if(typeof renderTripList==='function')renderTripList();
+  if(typeof renderCommFull==='function'){renderCommFull._loaded=false;}
+  if(typeof renderMainComm==='function')renderMainComm();
+  toast('또 만나요 🍕');
+}
 async function editProfile(){if(!currentUser)return;const newName=prompt('새 닉네임',currentUser.name);if(!newName||newName.trim().length<2){toast('닉네임은 2자 이상이어야 해요');return;}const nm=newName.trim();const av=nm[0].toUpperCase();currentUser.name=nm;currentUser.avatar=av;await sb.from('profiles').update({name:nm,avatar:av}).eq('id',currentUser.id);closeProfile();renderUserBtn();renderMenuUser();toast('프로필 업데이트 완료!');}
 
 /* ══ INIT ══ */
@@ -3845,7 +3858,7 @@ function loadMyTops(){
     });
   }catch(e){}
 }
-function isMyTop(t){ return t && (String(t.id).indexOf('u')===0 || t.isMine===true || (currentUser&&t.userId===currentUser.id)); };
+function isMyTop(t){ if(!currentUser||!t)return false; return t.userId===currentUser.id || (t.isMine===true && t.userId===currentUser.id); };
 
 // 목적지 문자열에서 좌표 찾기
 function findCityCoords(dest){
