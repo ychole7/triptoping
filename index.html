@@ -2706,7 +2706,8 @@ function triggerGenPlan(){
     renderPlan(plan);
   }).catch(e=>{
     clearInterval(iv);STS.forEach(s=>document.getElementById(s).className='step dn');
-    toast('AI 생성 실패 — 기본 플랜으로 대체');
+    console.error('AI 생성 실패:', e);
+    toast('⚠️ AI 생성 실패: '+(e.message||e).toString().slice(0,60));
     renderPlan(getPlan(query));
   });
 }
