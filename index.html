@@ -2744,16 +2744,35 @@ async function genAiPlan(q){
   return parsed;
 }
 function getPlan(q){const l=q.toLowerCase();
-  if(l.includes('나트랑')||l.includes('베트남')||l.includes('다낭'))return PLANS['나트랑'];
-  if(l.includes('오사카')||l.includes('교토')||l.includes('간사이'))return PLANS['오사카'];
-  if(l.includes('도쿄')||l.includes('일본'))return PLANS['도쿄'];
-  if(l.includes('방콕')||l.includes('태국'))return PLANS['방콕'];
+  // 정확히 일치하는 샘플만 (AI 실패 시 폴백용)
+  if(l.includes('나트랑'))return PLANS['나트랑'];
+  if(l.includes('오사카'))return PLANS['오사카'];
+  if(l.includes('도쿄'))return PLANS['도쿄'];
+  if(l.includes('방콕'))return PLANS['방콕'];
   if(l.includes('제주'))return PLANS['제주'];
-  if(l.includes('발리')||l.includes('인도네시아'))return PLANS['발리'];
+  if(l.includes('발리'))return PLANS['발리'];
   if(l.includes('싱가포르'))return PLANS['싱가포르'];
-  if(l.includes('파리')||l.includes('프랑스'))return PLANS['파리'];
-  if(l.includes('런던')||l.includes('영국'))return PLANS['런던'];
-  return PLANS['나트랑'];
+  if(l.includes('파리'))return PLANS['파리'];
+  if(l.includes('런던'))return PLANS['런던'];
+  // 매칭 없으면: 첫 도시 추출해서 빈 일정 틀 생성 (엉뚱한 도시 방지)
+  return makeEmptyPlan(q);
+}
+// 매칭 샘플 없을 때 빈 일정 틀
+function makeEmptyPlan(q){
+  var dest=extractDest(q)||'여행지';
+  var nights=2;
+  var nm=q.match(/(\d+)박/);if(nm)nights=parseInt(nm[1]);
+  var days=[];
+  for(var i=0;i<=nights;i++){
+    days.push({title:'Day '+(i+1),items:[{time:'오전 10시',name:'일정을 추가해보세요',desc:'+ 버튼으로 장소를 추가하세요'}]});
+  }
+  return {title:dest+' 여행',destination:dest,companion:'',duration:nights+'박 '+(nights+1)+'일',days:days};
+}
+// 검색어에서 도시명 추출 (간단)
+function extractDest(q){
+  var cities=['나트랑','다낭','호치민','하노이','오사카','교토','도쿄','삿포로','후쿠오카','오키나와','방콕','치앙마이','발리','싱가포르','세부','보라카이','파리','런던','로마','바르셀로나','제주','부산','경주','강릉','속초','여수','전주'];
+  for(var i=0;i<cities.length;i++){if(q.includes(cities[i]))return cities[i];}
+  return null;
 }
 function renderPlan(plan,isSaved){currentPlan=plan;document.getElementById('planTtl').textContent='🍕 '+plan.title;
   // 당일치기 표시 보정
