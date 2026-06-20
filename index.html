@@ -1087,6 +1087,11 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .ai-ic-btn.undo i{color:var(--gy);font-size:16px;}
 .ai-ic-btn.undo:disabled{opacity:.35;cursor:not-allowed;}
 
+
+.tl-travel{display:flex;align-items:center;gap:8px;padding:2px 0 2px 56px;margin:-2px 0;}
+.tl-travel-txt{font-size:11px;color:var(--gy);background:#F5F3EF;padding:3px 10px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;}
+.tl-travel-txt i{font-size:12px;}
+
 </style>
 
   <!-- PWA -->
@@ -2850,7 +2855,37 @@ function renderPlan(plan,isSaved){currentPlan=plan;document.getElementById('plan
 const DC=['#FF5F1F','#00C9A7','#FFCC00'];
 function mkIcon(n,c){return L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:${c};transform:rotate(-45deg);border:2px solid white;display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:10px;font-weight:700;">${n}</span></div>`,iconSize:[24,24],iconAnchor:[12,24],popupAnchor:[0,-26]});}
 function switchPD(i){document.querySelectorAll('.dtab').forEach((t,j)=>t.classList.toggle('on',j===i));renderPD(i);}
-function renderPD(di){mapMarkers.forEach(m=>map.removeLayer(m));mapMarkers=[];const day=currentPlan.days[di];if(!day)return;const lls=[];day.items.forEach((item,i)=>{if(item.lat&&item.lng){const mk=L.marker([item.lat,item.lng],{icon:mkIcon(i+1,DC[i%3])}).addTo(map).bindPopup(`<div style="font-size:11px;color:#FF5F1F;">${item.time}</div><div style="font-weight:700;font-size:12px;">${item.name}</div><div style="font-size:11px;color:#666;">${item.desc}</div>`);mapMarkers.push(mk);lls.push([item.lat,item.lng]);}});if(lls.length>1){const pl=L.polyline(lls,{color:'#FF5F1F',weight:2,dashArray:'5,8',opacity:.55}).addTo(map);mapMarkers.push(pl);map.fitBounds(L.latLngBounds(lls),{padding:[24,24]});}else if(lls.length===1)map.setView(lls[0],14);const dc=['d0','d1','d2'];document.getElementById('tlList').innerHTML=day.items.map((item,i)=>`<div class="tl-item${i===0?' sel':''}" onclick="focusPin(${i})"><div class="tl-time">${item.time}</div><div class="tl-dot ${dc[i%3]}"></div><div class="tl-body"><div class="tl-name">${item.name}</div><div class="tl-desc">${item.desc}</div><div class="tl-tags">${(item.tags||[]).map(t=>`<span class="tl-tag">${t}</span>`).join('')}</div></div><div class="tl-pin" onclick="event.stopPropagation();focusPin(${i})" title="지도에서 보기"><i class="ti ti-map-pin"></i></div><div class="tl-nav" onclick="event.stopPropagation();openInMaps('${(item.name||'').replace(/'/g,'')}',${item.lat||'null'},${item.lng||'null'})" title="지도 앱에서 열기"><i class="ti ti-navigation"></i></div></div>`).join('');}
+
+/* ══ 이동 시간 추정 (직선거리 기반) ══ */
+// 두 좌표 간 직선거리 (km) - Haversine
+function distKm(lat1,lng1,lat2,lng2){
+  var R=6371;
+  var dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+// 이동 시간 추정 HTML (직선거리×보정)
+function travelInfo(a,b){
+  if(!a||!b||!a.lat||!a.lng||!b.lat||!b.lng)return '';
+  var km=distKm(a.lat,a.lng,b.lat,b.lng);
+  if(km<0.05)return '';  // 거의 같은 위치
+  // 실제 도로는 직선의 약 1.3배로 보정
+  var realKm=km*1.3;
+  // 도보 4.5km/h, 차 30km/h(시내) 가정
+  var walkMin=Math.round(realKm/4.5*60);
+  var carMin=Math.round(realKm/30*60);
+  var parts=[];
+  if(walkMin<=40)parts.push('<i class="ti ti-walk"></i> 약 '+walkMin+'분');
+  parts.push('<i class="ti ti-car"></i> 약 '+(carMin<1?1:carMin)+'분');
+  var distTxt=realKm<1?Math.round(realKm*1000)+'m':realKm.toFixed(1)+'km';
+  return '<div class="tl-travel"><span class="tl-travel-line"></span><span class="tl-travel-txt">'+distTxt+' · '+parts.join(' · ')+'</span></div>';
+}
+
+function renderPD(di){mapMarkers.forEach(m=>map.removeLayer(m));mapMarkers=[];const day=currentPlan.days[di];if(!day)return;const lls=[];day.items.forEach((item,i)=>{if(item.lat&&item.lng){const mk=L.marker([item.lat,item.lng],{icon:mkIcon(i+1,DC[i%3])}).addTo(map).bindPopup(`<div style="font-size:11px;color:#FF5F1F;">${item.time}</div><div style="font-weight:700;font-size:12px;">${item.name}</div><div style="font-size:11px;color:#666;">${item.desc}</div>`);mapMarkers.push(mk);lls.push([item.lat,item.lng]);}});if(lls.length>1){const pl=L.polyline(lls,{color:'#FF5F1F',weight:2,dashArray:'5,8',opacity:.55}).addTo(map);mapMarkers.push(pl);map.fitBounds(L.latLngBounds(lls),{padding:[24,24]});}else if(lls.length===1)map.setView(lls[0],14);const dc=['d0','d1','d2'];document.getElementById('tlList').innerHTML=day.items.map((item,i)=>{
+    var prev=i>0?day.items[i-1]:null;
+    var tv=prev?travelInfo(prev,item):'';
+    return tv+`<div class="tl-item${i===0?' sel':''}" onclick="focusPin(${i})"><div class="tl-time">${item.time}</div><div class="tl-dot ${dc[i%3]}"></div><div class="tl-body"><div class="tl-name">${item.name}</div><div class="tl-desc">${item.desc}</div><div class="tl-tags">${(item.tags||[]).map(t=>`<span class="tl-tag">${t}</span>`).join('')}</div></div><div class="tl-pin" onclick="event.stopPropagation();focusPin(${i})" title="지도에서 보기"><i class="ti ti-map-pin"></i></div><div class="tl-nav" onclick="event.stopPropagation();openInMaps('${(item.name||'').replace(/'/g,'')}',${item.lat||'null'},${item.lng||'null'})" title="지도 앱에서 열기"><i class="ti ti-navigation"></i></div></div>`;
+  }).join('');}
 function focusPin(i){document.querySelectorAll('.tl-item').forEach((el,j)=>el.classList.toggle('sel',j===i));const mk=mapMarkers[i];if(mk&&mk.getLatLng){map.setView(mk.getLatLng(),15,{animate:true});mk.openPopup();}}
 function resetAll(){myTops=[];query='';currentPlan=null;renderSelBar();renderTbar();}
 function savePlanToTrips(){
