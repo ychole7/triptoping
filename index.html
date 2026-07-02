@@ -1484,8 +1484,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
   <div class="stats-title" style="margin-top:6px;"><i class="ti ti-map-pin"></i> 내가 다녀온 곳 <span id="conquerBadge" style="font-size:12.5px;color:var(--or);font-weight:700;margin-left:4px;"></span></div>
   <div id="myMapWrap" style="padding:0 16px 6px;">
     <div id="myTravelMap" style="width:100%;height:200px;border-radius:var(--radius-md);overflow:hidden;border:1.5px solid var(--bd);box-shadow:var(--shadow-sm);"></div>
-    <div id="myMapEmpty" style="display:none;text-align:center;padding:36px 20px;background:#F5F3EF;border-radius:var(--radius-md);color:var(--gy);font-size:14px;">
-      🗺<br><br>아직 저장한 여행이 없어요<br>첫 여행을 만들면 지도에 핀이 꽂혀요!
+    <div id="myMapEmpty" style="display:none;text-align:center;padding:36px 20px;background:#F5F3EF;border-radius:var(--radius-md);color:var(--gy);font-size:14px;">아직 다녀온 여행이 없어요. 여행기에서 "✈️ 다녀온 여행"을 켜면 지도에 표시돼요!<br><br>아직 저장한 여행이 없어요<br>첫 여행을 만들면 지도에 핀이 꽂혀요!
     </div>
   
   </div>
@@ -3754,15 +3753,15 @@ function getDdayBadge(startDate){
 function renderStats(){
   const wrap=document.getElementById('statsRow');
   if(!wrap)return;
-  // 총 여행 수
+  // 총 저장 여행 수 (전체)
   const tripCount=trips.length;
-  // 방문 도시 수 (중복 제거)
+  // 방문 도시 · 총 여행일 = 실제 다녀온(visited) 여행만 카운트
+  const visitedTrips=trips.filter(t=>t.visited);
   const cities=new Set();
-  trips.forEach(t=>{ if(t.dest){const city=t.dest.split(',')[0].trim();cities.add(city);} });
+  visitedTrips.forEach(t=>{ if(t.dest){const city=t.dest.split(',')[0].trim();cities.add(city);} });
   const cityCount=cities.size;
-  // 총 여행일
   let totalDays=0;
-  trips.forEach(t=>{ if(t.start&&t.end){const d=Math.round((new Date(t.end)-new Date(t.start))/864e5)+1;if(d>0)totalDays+=d;} });
+  visitedTrips.forEach(t=>{ if(t.start&&t.end){const d=Math.round((new Date(t.end)-new Date(t.start))/864e5)+1;if(d>0)totalDays+=d;} });
   wrap.innerHTML=`
     <div class="stat-card"><div class="stat-num">${tripCount}</div><div class="stat-label">저장한 여행</div></div>
     <div class="stat-card teal"><div class="stat-num">${cityCount}</div><div class="stat-label">방문 도시</div></div>
@@ -4145,9 +4144,9 @@ function renderMyTravelMap(){
   const mapEl=document.getElementById('myTravelMap');
   const emptyEl=document.getElementById('myMapEmpty');
   if(!mapEl)return;
-  // 좌표 있는 여행만
+  // 실제 다녀온(visited) 여행만, 좌표 있는 것
   const located=[];
-  trips.forEach(t=>{
+  trips.filter(t=>t.visited).forEach(t=>{
     // 여행의 첫 좌표 찾기
     let lat=null,lng=null;
     if(t.days){
