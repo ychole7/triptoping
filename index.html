@@ -1093,6 +1093,51 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .tl-travel-txt{font-size:12.5px;color:var(--gy);background:#F5F3EF;padding:3px 10px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;}
 .tl-travel-txt i{font-size:14px;}
 
+
+/* ══ 피자 굽는 로딩 애니메이션 ══ */
+.pz-oven{position:relative;width:150px;height:150px;margin:0 auto 8px;}
+.pz-dough{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE8B8,#F5C468 70%,#E0A445);box-shadow:0 8px 24px rgba(224,164,69,.35),inset 0 -4px 10px rgba(0,0,0,.08);animation:pzPulse 2.4s ease-in-out infinite;}
+@keyframes pzPulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.05);}}
+.pz-sauce{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:82px;height:82px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#FF7A4D,#E8492A 75%);animation:pzSauce 2.4s ease-in-out infinite;}
+@keyframes pzSauce{0%{transform:translate(-50%,-50%) scale(.6);opacity:0;}25%,100%{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+.pz-top{position:absolute;font-size:19px;opacity:0;animation:pzDrop 2.4s ease-in-out infinite;}
+.pz-t1{left:38px;top:44px;animation-delay:.5s;}
+.pz-t2{left:78px;top:40px;animation-delay:.7s;}
+.pz-t3{left:56px;top:68px;animation-delay:.9s;}
+.pz-t4{left:36px;top:82px;animation-delay:1.1s;}
+.pz-t5{left:84px;top:78px;animation-delay:1.3s;}
+.pz-t6{left:60px;top:36px;animation-delay:1.5s;}
+@keyframes pzDrop{0%{opacity:0;transform:translateY(-22px) scale(.4);}12%{opacity:1;transform:translateY(0) scale(1.15);}16%{transform:translateY(0) scale(1);}82%{opacity:1;transform:translateY(0) scale(1);}94%,100%{opacity:0;transform:translateY(0) scale(1);}}
+.pz-steam{position:absolute;font-size:15px;color:#E0A445;opacity:0;animation:pzSteam 2.4s ease-out infinite;left:50%;}
+.pz-s1{margin-left:-30px;animation-delay:.9s;}
+.pz-s2{margin-left:-4px;animation-delay:1.3s;}
+.pz-s3{margin-left:22px;animation-delay:1.7s;}
+@keyframes pzSteam{0%{opacity:0;top:26px;}25%{opacity:.7;}60%{opacity:0;top:-4px;}100%{opacity:0;top:-4px;}}
+
+
+/* ══ 여행 발자국 카드 ══ */
+.footprint-btn{width:100%;background:linear-gradient(135deg,#FF5F1F,#FFB800);color:white;border:none;border-radius:14px;padding:14px;font-family:'Black Han Sans',sans-serif;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(255,95,31,.3);display:flex;align-items:center;justify-content:center;gap:7px;transition:transform .15s;}
+.footprint-btn:hover{transform:scale(.98);}
+.fp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px;}
+.fp-overlay.show{display:flex;}
+.fp-sheet{width:100%;max-width:340px;}
+.fp-card{background:linear-gradient(160deg,#FF5F1F 0%,#FF8C42 55%,#FFB800 100%);border-radius:24px;padding:30px 24px 20px;text-align:center;color:white;box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative;overflow:hidden;}
+.fp-card::before{content:'';position:absolute;top:-40px;right:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);}
+.fp-card::after{content:'';position:absolute;bottom:-50px;left:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);}
+.fp-year{font-size:13px;font-weight:700;opacity:.85;letter-spacing:3px;}
+.fp-title{font-family:'Black Han Sans',sans-serif;font-size:24px;margin:4px 0 8px;}
+.fp-pizza{font-size:44px;margin-bottom:12px;animation:pzPulse 2.4s ease-in-out infinite;}
+.fp-stats{display:flex;justify-content:center;gap:20px;margin-bottom:14px;position:relative;z-index:1;}
+.fp-num{font-family:'Black Han Sans',sans-serif;font-size:30px;line-height:1;}
+.fp-lbl{font-size:11.5px;opacity:.9;margin-top:3px;}
+.fp-dist{font-size:14px;font-weight:700;background:rgba(255,255,255,.2);border-radius:12px;padding:8px 14px;display:inline-block;margin-bottom:6px;position:relative;z-index:1;}
+.fp-earth{font-size:12.5px;opacity:.92;margin-bottom:10px;}
+.fp-toppick{font-size:12.5px;background:rgba(255,255,255,.16);border-radius:10px;padding:6px 12px;display:inline-block;margin-bottom:14px;position:relative;z-index:1;}
+.fp-brand{font-size:11.5px;opacity:.75;letter-spacing:1px;font-weight:700;}
+.fp-actions{display:flex;gap:10px;margin-top:14px;}
+.fp-save{flex:2;background:white;color:var(--or);border:none;border-radius:13px;padding:13px;font-family:'Black Han Sans',sans-serif;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.fp-close{flex:1;background:rgba(255,255,255,.2);color:white;border:none;border-radius:13px;padding:13px;font-size:14px;cursor:pointer;font-family:'Pretendard',sans-serif;}
+
 </style>
 
   <!-- PWA -->
@@ -1334,7 +1379,21 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 <!-- LOADING -->
 <div class="scr" id="s-load">
   <div class="ld-body">
-    <div class="spin-pz">🍕</div>
+    <!-- 피자 굽는 애니메이션 -->
+    <div class="pz-oven">
+      <div class="pz-dough">
+        <div class="pz-sauce"></div>
+        <span class="pz-top pz-t1">🍅</span>
+        <span class="pz-top pz-t2">🧀</span>
+        <span class="pz-top pz-t3">🍄</span>
+        <span class="pz-top pz-t4">🫑</span>
+        <span class="pz-top pz-t5">🌿</span>
+        <span class="pz-top pz-t6">🍖</span>
+      </div>
+      <div class="pz-steam pz-s1">〰</div>
+      <div class="pz-steam pz-s2">〰</div>
+      <div class="pz-steam pz-s3">〰</div>
+    </div>
     <div class="ld-ttl">AI 셰프가 플랜을 굽고 있어요</div>
     <div class="steps">
       <div class="step" id="st1"><i class="ti ti-search"></i> 여행 조건 분석 중...</div>
@@ -1391,11 +1450,14 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
   <div class="stats-row" id="statsRow"></div>
   <!-- 내 여행 지도 -->
   <div class="stats-title" style="margin-top:6px;"><i class="ti ti-map-pin"></i> 내가 다녀온 곳 <span id="conquerBadge" style="font-size:12.5px;color:var(--or);font-weight:700;margin-left:4px;"></span></div>
-  <div id="myMapWrap" style="padding:0 16px 16px;">
+  <div id="myMapWrap" style="padding:0 16px 6px;">
     <div id="myTravelMap" style="width:100%;height:200px;border-radius:var(--radius-md);overflow:hidden;border:1.5px solid var(--bd);box-shadow:var(--shadow-sm);"></div>
     <div id="myMapEmpty" style="display:none;text-align:center;padding:36px 20px;background:#F5F3EF;border-radius:var(--radius-md);color:var(--gy);font-size:14px;">
       🗺<br><br>아직 저장한 여행이 없어요<br>첫 여행을 만들면 지도에 핀이 꽂혀요!
     </div>
+  <div style="padding:0 16px 16px;">
+    <button class="footprint-btn" onclick="openFootprint()"><i class="ti ti-sparkles"></i> 나의 여행 발자국 카드 만들기</button>
+  </div>
   </div>
   <div class="my-grid">
     <div class="my-grid-card" onclick="goMyTrips()">
@@ -4436,6 +4498,110 @@ function saveDateEdit(){
   toast('📅 날짜가 변경됐어요!');
 }
 
+
+/* ══ 여행 발자국 카드 ══ */
+function calcFootprint(){
+  var tripCount=trips.length;
+  var cities=new Set();
+  var totalDays=0, totalKm=0;
+  var topCount={};
+  var seoul=[37.5665,126.9780];  // 출발 기준(서울)
+  trips.forEach(function(t){
+    if(t.dest)cities.add(t.dest.split(',')[0].trim());
+    if(t.start&&t.end){totalDays+=Math.round((new Date(t.end)-new Date(t.start))/86400000)+1;}
+    (t.toppings||[]).forEach(function(tp){topCount[tp]=(topCount[tp]||0)+1;});
+    // 거리: 서울→목적지 왕복 (첫 좌표 기준)
+    var coord=null;
+    (t.days||[]).some(function(d){return (d.items||[]).some(function(it){if(it.lat&&it.lng){coord=[it.lat,it.lng];return true;}return false;});});
+    if(!coord&&typeof findCityCoords==='function'&&t.dest)coord=findCityCoords(t.dest);
+    if(coord){totalKm+=distKm(seoul[0],seoul[1],coord[0],coord[1])*2;}
+  });
+  var topPick='';var mx=0;
+  Object.keys(topCount).forEach(function(k){if(topCount[k]>mx){mx=topCount[k];topPick=k;}});
+  return{trips:tripCount,cities:cities.size,days:totalDays,km:Math.round(totalKm),topPick:topPick};
+}
+
+function openFootprint(){
+  if(!currentUser){toast('로그인하면 발자국 카드를 만들 수 있어요');openAuth();return;}
+  if(!trips.length){toast('여행을 먼저 만들어보세요 🍕');return;}
+  var f=calcFootprint();
+  document.getElementById('fpYear').textContent=new Date().getFullYear();
+  document.getElementById('fpTrips').textContent=f.trips;
+  document.getElementById('fpCities').textContent=f.cities;
+  document.getElementById('fpDays').textContent=f.days;
+  document.getElementById('fpDist').textContent='✈️ 총 이동거리 '+f.km.toLocaleString()+'km';
+  var earthRatio=(f.km/40075);
+  document.getElementById('fpEarth').textContent=earthRatio>=0.05?('지구 '+earthRatio.toFixed(1)+'바퀴 만큼 여행했어요!'):'여행의 시작, 앞으로가 기대돼요!';
+  document.getElementById('fpTopPick').textContent=f.topPick?('최애 토핑: 🍕 '+f.topPick):'🍕 토핑을 골라 취향 여행을 시작해보세요';
+  document.getElementById('fpOverlay').classList.add('show');
+}
+function closeFootprint(){document.getElementById('fpOverlay').classList.remove('show');}
+
+// canvas로 카드 이미지 생성·다운로드
+function saveFootprint(){
+  var f=calcFootprint();
+  var W=720,H=960;
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  var x=cv.getContext('2d');
+  // 배경 그라디언트
+  var g=x.createLinearGradient(0,0,W*.4,H);
+  g.addColorStop(0,'#FF5F1F');g.addColorStop(.55,'#FF8C42');g.addColorStop(1,'#FFB800');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  // 장식 원
+  x.fillStyle='rgba(255,255,255,.12)';x.beginPath();x.arc(W-60,80,160,0,7);x.fill();
+  x.fillStyle='rgba(255,255,255,.08)';x.beginPath();x.arc(40,H-70,140,0,7);x.fill();
+  x.textAlign='center';x.fillStyle='white';
+  var yr=new Date().getFullYear();
+  x.font='700 26px Pretendard,sans-serif';x.globalAlpha=.85;
+  x.fillText(String(yr),W/2,110);x.globalAlpha=1;
+  x.font='900 52px Pretendard,sans-serif';
+  x.fillText('나의 여행 발자국',W/2,175);
+  x.font='90px serif';x.fillText('🍕',W/2,300);
+  // 통계 3개
+  var stats=[[f.trips,'번의 여행'],[f.cities,'곳의 도시'],[f.days,'일의 여정']];
+  var sx=[W/2-190,W/2,W/2+190];
+  stats.forEach(function(s,i){
+    x.font='900 62px Pretendard,sans-serif';
+    x.fillText(String(s[0]),sx[i],420);
+    x.font='400 24px Pretendard,sans-serif';x.globalAlpha=.9;
+    x.fillText(s[1],sx[i],458);x.globalAlpha=1;
+  });
+  // 이동거리 배지
+  x.fillStyle='rgba(255,255,255,.2)';
+  roundRect(x,W/2-220,510,440,66,20);x.fill();
+  x.fillStyle='white';x.font='700 30px Pretendard,sans-serif';
+  x.fillText('✈️ 총 이동거리 '+f.km.toLocaleString()+'km',W/2,554);
+  // 지구 문구
+  var earthRatio=f.km/40075;
+  x.font='400 25px Pretendard,sans-serif';x.globalAlpha=.92;
+  x.fillText(earthRatio>=0.05?('지구 '+earthRatio.toFixed(1)+'바퀴 만큼 여행했어요!'):'여행의 시작, 앞으로가 기대돼요!',W/2,630);
+  x.globalAlpha=1;
+  // 최애 토핑
+  if(f.topPick){
+    x.fillStyle='rgba(255,255,255,.16)';
+    roundRect(x,W/2-180,680,360,56,16);x.fill();
+    x.fillStyle='white';x.font='400 25px Pretendard,sans-serif';
+    x.fillText('최애 토핑: 🍕 '+f.topPick,W/2,718);
+  }
+  // 브랜드
+  x.font='700 24px Pretendard,sans-serif';x.globalAlpha=.75;
+  x.fillText('🍕 TripTopping',W/2,H-60);
+  x.globalAlpha=1;
+  // 다운로드
+  cv.toBlob(function(blob){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='triptoping-footprint-'+yr+'.png';
+    a.click();
+    toast('📸 발자국 카드가 저장됐어요!');
+  },'image/png');
+}
+function roundRect(x,px,py,w,h,r){
+  x.beginPath();x.moveTo(px+r,py);
+  x.arcTo(px+w,py,px+w,py+h,r);x.arcTo(px+w,py+h,px,py+h,r);
+  x.arcTo(px,py+h,px,py,r);x.arcTo(px,py,px+w,py,r);x.closePath();
+}
+
 </script>
 
 <!-- SHARE MODAL -->
@@ -4539,6 +4705,29 @@ function saveDateEdit(){
     <div class="des-btns">
       <button class="des-cancel" onclick="closeDateEdit()">취소</button>
       <button class="des-save" onclick="saveDateEdit()">변경하기</button>
+    </div>
+  </div>
+</div>
+<!-- 여행 발자국 카드 -->
+<div class="fp-overlay" id="fpOverlay" onclick="if(event.target===this)closeFootprint()">
+  <div class="fp-sheet">
+    <div class="fp-card" id="fpCard">
+      <div class="fp-year" id="fpYear">2026</div>
+      <div class="fp-title">나의 여행 발자국</div>
+      <div class="fp-pizza">🍕</div>
+      <div class="fp-stats">
+        <div class="fp-stat"><div class="fp-num" id="fpTrips">0</div><div class="fp-lbl">번의 여행</div></div>
+        <div class="fp-stat"><div class="fp-num" id="fpCities">0</div><div class="fp-lbl">곳의 도시</div></div>
+        <div class="fp-stat"><div class="fp-num" id="fpDays">0</div><div class="fp-lbl">일의 여정</div></div>
+      </div>
+      <div class="fp-dist" id="fpDist">✈️ 총 이동거리 0km</div>
+      <div class="fp-earth" id="fpEarth"></div>
+      <div class="fp-toppick" id="fpTopPick"></div>
+      <div class="fp-brand">🍕 TripTopping</div>
+    </div>
+    <div class="fp-actions">
+      <button class="fp-save" onclick="saveFootprint()"><i class="ti ti-download"></i> 이미지로 저장</button>
+      <button class="fp-close" onclick="closeFootprint()">닫기</button>
     </div>
   </div>
 </div>
