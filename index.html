@@ -1138,6 +1138,38 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
 .fp-save{flex:2;background:white;color:var(--or);border:none;border-radius:13px;padding:13px;font-family:'Black Han Sans',sans-serif;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
 .fp-close{flex:1;background:rgba(255,255,255,.2);color:white;border:none;border-radius:13px;padding:13px;font-size:14px;cursor:pointer;font-family:'Pretendard',sans-serif;}
 
+
+/* ══ 매거진 뷰 (여행 기록) ══ */
+.mag-hero{position:relative;height:280px;background:linear-gradient(135deg,#FF5F1F,#FF8C42);background-size:cover;background-position:center;overflow:hidden;}
+.mag-back{position:absolute;top:16px;left:16px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.35);color:white;border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.mag-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1) 40%,rgba(0,0,0,.6));z-index:1;}
+.mag-hero-content{position:absolute;bottom:0;left:0;right:0;padding:24px 20px;z-index:2;color:white;}
+.mag-rating{font-size:17px;color:#FFD84D;letter-spacing:2px;margin-bottom:6px;text-shadow:0 1px 3px rgba(0,0,0,.3);}
+.mag-title{font-family:'Black Han Sans',sans-serif;font-size:30px;line-height:1.15;margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,.4);}
+.mag-meta{font-size:14px;opacity:.95;display:flex;gap:12px;flex-wrap:wrap;text-shadow:0 1px 3px rgba(0,0,0,.3);}
+.mag-body{padding:20px 16px 40px;}
+.mag-review-card{background:linear-gradient(135deg,#FFF8F0,#FFF0E8);border-radius:16px;padding:18px 20px;margin-bottom:20px;font-size:15px;line-height:1.8;color:var(--dk);position:relative;}
+.mag-review-card::before{content:'"';position:absolute;top:6px;left:14px;font-size:44px;color:var(--or);opacity:.25;font-family:Georgia,serif;}
+.mag-review-card.empty{display:none;}
+.mag-photos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:24px;}
+.mag-photos:empty{display:none;}
+.mag-photo{aspect-ratio:1;border-radius:12px;overflow:hidden;background:#F5F3EF;}
+.mag-photo:first-child{grid-column:span 2;aspect-ratio:16/10;}
+.mag-photo img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.mag-day{margin-bottom:22px;}
+.mag-day-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.mag-day-num{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#FF5F1F,#FF8C42);color:white;display:flex;align-items:center;justify-content:center;font-family:'Black Han Sans',sans-serif;font-size:14px;flex-shrink:0;}
+.mag-day-ttl{font-family:'Black Han Sans',sans-serif;font-size:17px;color:var(--dk);}
+.mag-item{display:flex;gap:12px;padding:8px 0 8px 46px;position:relative;}
+.mag-item::before{content:'';position:absolute;left:16px;top:0;bottom:0;width:2px;background:var(--bd);}
+.mag-item::after{content:'';position:absolute;left:12px;top:14px;width:10px;height:10px;border-radius:50%;background:var(--or);border:2px solid white;}
+.mag-item:last-child::before{bottom:50%;}
+.mag-item-time{font-size:12.5px;color:var(--gy);min-width:52px;padding-top:1px;}
+.mag-item-body{flex:1;}
+.mag-item-name{font-size:15px;font-weight:600;color:var(--dk);margin-bottom:2px;}
+.mag-item-desc{font-size:13px;color:var(--gy);line-height:1.5;}
+.mag-edit-btn{width:100%;background:var(--wh);border:1.5px solid var(--or);color:var(--or);border-radius:14px;padding:13px;font-size:14px;font-weight:600;font-family:'Pretendard',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;}
+
 </style>
 
   <!-- PWA -->
@@ -1455,9 +1487,7 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
     <div id="myMapEmpty" style="display:none;text-align:center;padding:36px 20px;background:#F5F3EF;border-radius:var(--radius-md);color:var(--gy);font-size:14px;">
       🗺<br><br>아직 저장한 여행이 없어요<br>첫 여행을 만들면 지도에 핀이 꽂혀요!
     </div>
-  <div style="padding:0 16px 16px;">
-    <button class="footprint-btn" onclick="openFootprint()"><i class="ti ti-sparkles"></i> 나의 여행 발자국 카드 만들기</button>
-  </div>
+  
   </div>
   <div class="my-grid">
     <div class="my-grid-card" onclick="goMyTrips()">
@@ -1631,6 +1661,25 @@ select.si-time{appearance:none;-webkit-appearance:none;background-image:url("dat
       <div class="rv-hint">여행당 최대 10장 · 자동 압축돼서 가볍게 저장돼요</div>
     </div>
     <button class="rv-save-btn" onclick="saveReviewAndExit()"><i class="ti ti-check"></i> 저장하기</button>
+  </div>
+</div>
+
+<!-- 매거진 뷰 (여행 기록 예쁘게) -->
+<div class="scr" id="s-magazine">
+  <div class="mag-hero" id="magHero">
+    <button class="mag-back" onclick="goMyTrips()"><i class="ti ti-arrow-left"></i></button>
+    <div class="mag-hero-overlay"></div>
+    <div class="mag-hero-content">
+      <div class="mag-rating" id="magRating"></div>
+      <div class="mag-title" id="magTitle">여행 제목</div>
+      <div class="mag-meta" id="magMeta"></div>
+    </div>
+  </div>
+  <div class="mag-body">
+    <div class="mag-review-card" id="magReviewCard"></div>
+    <div class="mag-photos" id="magPhotos"></div>
+    <div class="mag-timeline" id="magTimeline"></div>
+    <button class="mag-edit-btn" onclick="openReviewFromMag()"><i class="ti ti-edit"></i> 후기·사진 수정하기</button>
   </div>
 </div>
 
@@ -3494,6 +3543,10 @@ function takeSharedTrip(){
 function viewTrip(id){
   var t=trips.find(function(x){return x.id===id;});
   if(!t)return;
+  // 다녀온 여행(후기·사진·별점 있음)은 매거진 뷰로
+  if(t.visited||t.rating||t.review||(t.photos&&t.photos.length)){
+    openMagazine(id);return;
+  }
   // trips 데이터를 renderPlan이 받는 형식으로 변환
   var plan={
     title:t.name,
@@ -4601,6 +4654,53 @@ function roundRect(x,px,py,w,h,r){
   x.arcTo(px+w,py,px+w,py+h,r);x.arcTo(px+w,py+h,px,py+h,r);
   x.arcTo(px,py+h,px,py,r);x.arcTo(px,py,px+w,py,r);x.closePath();
 }
+
+
+/* ══ 매거진 뷰 렌더 ══ */
+var _magTripId=null;
+function openMagazine(id){
+  var t=trips.find(function(x){return x.id===id;});
+  if(!t)return;
+  _magTripId=id;
+  // 히어로 배경: 첫 사진 있으면 사진, 없으면 그라디언트
+  var hero=document.getElementById('magHero');
+  if(t.photos&&t.photos.length){
+    hero.style.backgroundImage='url('+t.photos[0].url+')';
+  }else{
+    hero.style.backgroundImage='';
+  }
+  // 별점
+  document.getElementById('magRating').textContent=t.rating?('★'.repeat(t.rating)+'☆'.repeat(5-t.rating)):'';
+  // 제목·메타
+  document.getElementById('magTitle').textContent=t.name;
+  var meta=[];
+  if(t.dest)meta.push('<i class="ti ti-map-pin"></i> '+t.dest);
+  if(t.start)meta.push('<i class="ti ti-calendar"></i> '+fmtDuration(t.start,t.end));
+  if(t.companion)meta.push('<i class="ti ti-users"></i> '+t.companion);
+  document.getElementById('magMeta').innerHTML=meta.join('');
+  // 후기
+  var rv=document.getElementById('magReviewCard');
+  if(t.review){rv.textContent=t.review;rv.classList.remove('empty');}
+  else{rv.classList.add('empty');}
+  // 사진
+  var ph=document.getElementById('magPhotos');
+  ph.innerHTML=(t.photos||[]).map(function(p){
+    return '<div class="mag-photo"><img src="'+p.url+'" onclick="openPhViewer(\''+p.url+'\')"/></div>';
+  }).join('');
+  // 타임라인
+  var tl=document.getElementById('magTimeline');
+  tl.innerHTML=(t.days||[]).map(function(d,di){
+    var items=(d.items||[]).filter(function(it){return it.name&&it.name!=='일정을 추가해보세요';});
+    if(!items.length)return '';
+    return '<div class="mag-day"><div class="mag-day-hdr"><div class="mag-day-num">'+(di+1)+'</div><div class="mag-day-ttl">'+(d.title||('Day '+(di+1)))+'</div></div>'
+      +items.map(function(it){
+        return '<div class="mag-item"><div class="mag-item-time">'+(it.time||'')+'</div><div class="mag-item-body"><div class="mag-item-name">'+it.name+'</div>'+(it.desc?'<div class="mag-item-desc">'+it.desc+'</div>':'')+'</div></div>';
+      }).join('')
+      +'</div>';
+  }).join('');
+  showScr('s-magazine');setNav('nb-my');
+}
+function openReviewFromMag(){ if(_magTripId)openReview(_magTripId); }
 
 </script>
 
